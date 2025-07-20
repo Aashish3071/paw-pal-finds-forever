@@ -7,6 +7,7 @@ interface Pet {
   id: string;
   name: string;
   breed: string;
+  petType: string;
   age: string;
   gender: 'male' | 'female';
   location: string;
@@ -33,6 +34,17 @@ export function PetCard({ pet, onWishlist, onViewDetails, isWishlisted = false }
     setTimeout(() => setIsHeartAnimating(false), 300);
   };
 
+  const getPetEmoji = (petType: string) => {
+    switch (petType.toLowerCase()) {
+      case 'dog': return '🐕';
+      case 'cat': return '🐱';
+      case 'bird': return '🐦';
+      case 'rabbit': return '🐰';
+      case 'fish': return '🐠';
+      default: return '🐾';
+    }
+  };
+
   return (
     <Card className="overflow-hidden shadow-[var(--shadow-card)] hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
       <div className="relative">
@@ -46,7 +58,7 @@ export function PetCard({ pet, onWishlist, onViewDetails, isWishlisted = false }
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary-coral-light to-sky-blue-light flex items-center justify-center">
-              <div className="text-6xl">🐕</div>
+              <div className="text-6xl">{getPetEmoji(pet.petType)}</div>
             </div>
           )}
         </div>
@@ -79,7 +91,10 @@ export function PetCard({ pet, onWishlist, onViewDetails, isWishlisted = false }
               {pet.gender}
             </span>
           </div>
-          <p className="text-muted-foreground">{pet.breed} • {pet.age}</p>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{getPetEmoji(pet.petType)}</span>
+            <p className="text-muted-foreground">{pet.breed} • {pet.age}</p>
+          </div>
         </div>
         
         <div className="flex items-center gap-4 text-sm text-muted-foreground">

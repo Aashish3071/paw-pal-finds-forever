@@ -1,22 +1,40 @@
 import { useState } from "react";
-import { RoleSelector } from "@/components/RoleSelector";
+import { BottomNavigation } from "@/components/BottomNavigation";
+import { PawPrints } from "@/components/PawPrints";
 import { PetFeed } from "@/components/PetFeed";
+import { Messages } from "@/components/Messages";
+import { Profile } from "@/components/Profile";
 import { PetListingForm } from "@/components/PetListingForm";
-import heroImage from "@/assets/hero-dog.jpg";
 
 const Index = () => {
-  const [userRole, setUserRole] = useState<'adopt' | 'rehome' | null>(null);
+  const [activeTab, setActiveTab] = useState<'home' | 'pawprints' | 'messages' | 'profile'>('pawprints');
   const [showListingForm, setShowListingForm] = useState(false);
-
-  if (!userRole) {
-    return <RoleSelector onRoleSelect={setUserRole} />;
-  }
 
   if (showListingForm) {
     return <PetListingForm onBack={() => setShowListingForm(false)} />;
   }
 
-  return <PetFeed userRole={userRole} onCreateListing={() => setShowListingForm(true)} />;
+  const renderActiveTab = () => {
+    switch (activeTab) {
+      case 'home':
+        return <PetFeed userRole="adopt" onCreateListing={() => setShowListingForm(true)} />;
+      case 'pawprints':
+        return <PawPrints />;
+      case 'messages':
+        return <Messages />;
+      case 'profile':
+        return <Profile />;
+      default:
+        return <PawPrints />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {renderActiveTab()}
+      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+    </div>
+  );
 };
 
 export default Index;

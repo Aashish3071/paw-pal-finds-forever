@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PetCard } from "./PetCard";
 
-// Mock data for development
+// Mock data for development - Now includes all pet types
 const mockPets = [
   {
     id: "1",
     name: "Buddy",
     breed: "Golden Retriever",
+    petType: "Dog",
     age: "2 years",
     gender: "male" as const,
     location: "Mumbai, Maharashtra",
@@ -20,13 +21,14 @@ const mockPets = [
   },
   {
     id: "2", 
-    name: "Luna",
-    breed: "Labrador Mix",
-    age: "6 months",
+    name: "Luna", 
+    breed: "Persian Cat",
+    petType: "Cat",
+    age: "1 year",
     gender: "female" as const,
     location: "Delhi, NCR",
-    images: ["https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=400"],
-    description: "Playful puppy looking for her forever home. Very affectionate.",
+    images: ["https://images.unsplash.com/photo-1574144611937-0df059b5ef3e?w=400"],
+    description: "Beautiful and calm Persian cat, loves cuddles and quiet spaces.",
     isVaccinated: true,
     postedDate: "1 week ago"
   },
@@ -34,6 +36,7 @@ const mockPets = [
     id: "3",
     name: "Rocky", 
     breed: "German Shepherd",
+    petType: "Dog",
     age: "5 years",
     gender: "male" as const,
     location: "Bangalore, Karnataka",
@@ -44,13 +47,27 @@ const mockPets = [
   },
   {
     id: "4",
-    name: "Daisy",
-    breed: "Beagle",
-    age: "3 years", 
-    gender: "female" as const,
+    name: "Chirpy",
+    breed: "Budgerigar",
+    petType: "Bird",
+    age: "6 months", 
+    gender: "male" as const,
     location: "Pune, Maharashtra",
-    images: ["https://images.unsplash.com/photo-1544944194-2d1-202b64?w=400"],
-    description: "Sweet and gentle Beagle, loves walks and treats. Perfect family companion.",
+    images: ["https://images.unsplash.com/photo-1452570053594-1b985d6ea890?w=400"],
+    description: "Colorful and talkative budgie, loves to sing and play. Comes with cage.",
+    isVaccinated: false,
+    postedDate: "3 days ago"
+  },
+  {
+    id: "5",
+    name: "Snowball",
+    breed: "Holland Lop",
+    petType: "Rabbit",
+    age: "8 months",
+    gender: "female" as const,
+    location: "Chennai, Tamil Nadu",
+    images: ["https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=400"],
+    description: "Gentle rabbit who loves fresh vegetables and hopping around the garden.",
     isVaccinated: true,
     postedDate: "5 days ago"
   }
@@ -85,7 +102,8 @@ export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
   const filteredPets = mockPets.filter(pet => 
     pet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     pet.breed.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    pet.location.toLowerCase().includes(searchQuery.toLowerCase())
+    pet.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    pet.petType.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (userRole === 'rehome') {
@@ -120,7 +138,7 @@ export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
         <div className="max-w-md mx-auto p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-foreground">Find Your Pal</h1>
+              <h1 className="text-xl font-bold text-foreground">Find Your Pet Pal</h1>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <MapPin className="w-4 h-4" />
                 <span>Near Mumbai</span>
@@ -134,7 +152,7 @@ export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by breed, name, or location..."
+              placeholder="Search pets by name, breed, or location..."
               className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -169,7 +187,7 @@ export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
               No pets found
             </h3>
             <p className="text-muted-foreground">
-              Try adjusting your search or check back later
+              Try searching for dogs, cats, birds, rabbits, or other pets
             </p>
           </div>
         )}
