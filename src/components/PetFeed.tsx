@@ -58,9 +58,10 @@ const mockPets = [
 
 interface PetFeedProps {
   userRole: 'adopt' | 'rehome';
+  onCreateListing?: () => void;
 }
 
-export function PetFeed({ userRole }: PetFeedProps) {
+export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [wishlistedPets, setWishlistedPets] = useState<Set<string>>(new Set());
 
@@ -100,7 +101,7 @@ export function PetFeed({ userRole }: PetFeedProps) {
             </p>
           </div>
           
-          <Button variant="hero" size="lg" className="w-full">
+          <Button variant="hero" size="lg" className="w-full" onClick={onCreateListing}>
             + Create New Listing
           </Button>
           
