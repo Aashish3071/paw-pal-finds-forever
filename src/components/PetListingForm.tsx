@@ -7,40 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 
 const petSchema = z.object({
   name: z.string().min(1, "Pet name is required"),
   breed: z.string().min(1, "Breed is required"),
   age: z.string().min(1, "Age is required"),
-  gender: z.enum(["male", "female"], {
-    required_error: "Please select gender",
-  }),
-  vaccinated: z.enum(["yes", "no", "partial"], {
-    required_error: "Please select vaccination status",
-  }),
+  gender: z.enum(["male", "female"], { required_error: "Please select gender" }),
+  vaccinated: z.enum(["yes", "no", "partial"], { required_error: "Please select vaccination status" }),
   location: z.string().min(1, "Location is required"),
-  temperament: z.string().min(1, "Please provide temperament details"),
-  reason: z.string().min(1, "Please provide reason for rehoming"),
-  fee: z.enum(["free", "nominal"], {
-    required_error: "Please select fee type",
-  }),
+  temperament: z.string().min(10, "Please provide more details about temperament"),
+  reason: z.string().min(10, "Please provide reason for rehoming"),
+  fee: z.enum(["free", "nominal"], { required_error: "Please select fee type" }),
 });
 
 type PetFormData = z.infer<typeof petSchema>;
@@ -75,35 +56,23 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
       });
       return;
     }
-    setPhotos((prev) => [...prev, ...files]);
+    setPhotos(prev => [...prev, ...files]);
   };
 
   const removePhoto = (index: number) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
   const onSubmit = (data: PetFormData) => {
     console.log("Pet listing data:", data);
     console.log("Photos:", photos);
-
-    // Convert form data to match database schema
-    const petData = {
-      name: data.name,
-      type: "Dog", // This should be dynamic based on form, adding for now
-      breed: data.breed,
-      gender: data.gender,
-      age: data.age,
-      description: `${data.temperament}\n\nReason for rehoming: ${data.reason}`,
-      location: data.location,
-      image_urls: [], // TODO: Handle file uploads to Supabase Storage
-    };
-
-    // For now, show success message. TODO: Integrate with usePets hook
+    
     toast({
       title: "Listing created!",
       description: "Your pet listing has been posted successfully.",
     });
-
+    
+    // Here you would typically send data to backend
     onBack();
   };
 
@@ -114,9 +83,7 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-bold text-foreground">
-            Create Pet Listing
-          </h1>
+          <h1 className="text-xl font-bold text-foreground">Create Pet Listing</h1>
         </div>
       </div>
 
@@ -130,15 +97,10 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6"
-              >
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Photo Upload */}
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">
-                    Pet Photos (Max 5)
-                  </Label>
+                  <Label className="text-sm font-medium">Pet Photos (Max 5)</Label>
                   <div className="grid grid-cols-3 gap-3">
                     {photos.map((photo, index) => (
                       <div key={index} className="relative group">
@@ -161,9 +123,7 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
                     {photos.length < 5 && (
                       <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-border/40 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
                         <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-                        <span className="text-xs text-muted-foreground">
-                          Add Photo
-                        </span>
+                        <span className="text-xs text-muted-foreground">Add Photo</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -199,10 +159,7 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
                       <FormItem>
                         <FormLabel>Breed</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="e.g., Golden Retriever, Mixed"
-                            {...field}
-                          />
+                          <Input placeholder="e.g., Golden Retriever, Mixed" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -218,10 +175,7 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
                       <FormItem>
                         <FormLabel>Age</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="e.g., 2 years, 6 months"
-                            {...field}
-                          />
+                          <Input placeholder="e.g., 2 years, 6 months" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -234,10 +188,7 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Gender</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select gender" />
@@ -259,10 +210,7 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Vaccinated</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select status" />
@@ -290,10 +238,7 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
                         Location
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="e.g., Mumbai, Maharashtra"
-                          {...field}
-                        />
+                        <Input placeholder="e.g., Mumbai, Maharashtra" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -306,10 +251,7 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Adoption Fee</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select fee type" />
@@ -317,9 +259,7 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="free">Free</SelectItem>
-                          <SelectItem value="nominal">
-                            Nominal fee (for vaccination/care)
-                          </SelectItem>
+                          <SelectItem value="nominal">Nominal fee (for vaccination/care)</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -365,7 +305,7 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
 
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-primary-coral to-pet-orange text-white hover:shadow-lg hover:scale-105 transition-all duration-300"
+                  className="w-full bg-gradient-primary hover:shadow-button-hover transition-all duration-300"
                   size="lg"
                 >
                   Create Listing
