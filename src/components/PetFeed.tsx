@@ -3,95 +3,20 @@ import { Search, Filter, MapPin, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PetCard } from "./PetCard";
-
-// Mock data for development - Now includes all pet types
-const mockPets = [
-  {
-    id: "1",
-    name: "Buddy",
-    breed: "Golden Retriever",
-    petType: "Dog",
-    age: "2 years",
-    gender: "male" as const,
-    location: "Mumbai, Maharashtra",
-    images: ["https://images.unsplash.com/photo-1552053831-71594a27632d?w=400"],
-    description: "Friendly and energetic dog, great with kids. Looking for a loving family.",
-    isVaccinated: true,
-    postedDate: "2 days ago"
-  },
-  {
-    id: "2", 
-    name: "Luna", 
-    breed: "Persian Cat",
-    petType: "Cat",
-    age: "1 year",
-    gender: "female" as const,
-    location: "Delhi, NCR",
-    images: ["https://images.unsplash.com/photo-1574144611937-0df059b5ef3e?w=400"],
-    description: "Beautiful and calm Persian cat, loves cuddles and quiet spaces.",
-    isVaccinated: true,
-    postedDate: "1 week ago"
-  },
-  {
-    id: "3",
-    name: "Rocky", 
-    breed: "German Shepherd",
-    petType: "Dog",
-    age: "5 years",
-    gender: "male" as const,
-    location: "Bangalore, Karnataka",
-    images: ["https://images.unsplash.com/photo-1551717743-49959800b1f6?w=400"],
-    description: "Well-trained guard dog, loyal and protective. Good with experienced owners.",
-    isVaccinated: true,
-    postedDate: "3 days ago"
-  },
-  {
-    id: "4",
-    name: "Chirpy",
-    breed: "Budgerigar",
-    petType: "Bird",
-    age: "6 months", 
-    gender: "male" as const,
-    location: "Pune, Maharashtra",
-    images: ["https://images.unsplash.com/photo-1452570053594-1b985d6ea890?w=400"],
-    description: "Colorful and talkative budgie, loves to sing and play. Comes with cage.",
-    isVaccinated: false,
-    postedDate: "3 days ago"
-  },
-  {
-    id: "5",
-    name: "Snowball",
-    breed: "Holland Lop",
-    petType: "Rabbit",
-    age: "8 months",
-    gender: "female" as const,
-    location: "Chennai, Tamil Nadu",
-    images: ["https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=400"],
-    description: "Gentle rabbit who loves fresh vegetables and hopping around the garden.",
-    isVaccinated: true,
-    postedDate: "5 days ago"
-  }
-];
+import { usePets, useSavedPets } from "@/hooks/usePets";
 
 interface PetFeedProps {
-  userRole: 'adopt' | 'rehome';
+  userRole: "adopt" | "rehome";
   onCreateListing?: () => void;
 }
 
 export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [wishlistedPets, setWishlistedPets] = useState<Set<string>>(new Set());
+  const { pets, isLoading } = usePets();
+  const { savedPets, toggleSavedPet } = useSavedPets();
 
   const handleWishlist = (petId: string) => {
-    setWishlistedPets(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(petId)) {
-        newSet.delete(petId);
-      } else {
-        newSet.add(petId);
-      }
-      return newSet;
-    });
+    toggleSavedPet(petId);
   };
 
   const handleViewDetails = (petId: string) => {
@@ -99,14 +24,48 @@ export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
     // TODO: Navigate to pet details page
   };
 
-  const filteredPets = mockPets.filter(pet => 
-    pet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    pet.breed.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    pet.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    pet.petType.toLowerCase().includes(searchQuery.toLowerCase())
+  const formatAge = (ageInMonths: number) => {
+    if (ageInMonths < 12) {
+      return `${ageInMonths} month${ageInMonths === 1 ? "" : "s"}`;
+    }
+    const years = Math.floor(ageInMonths / 12);
+    const months = ageInMonths % 12;
+
+    if (months === 0) {
+      return `${years} year${years === 1 ? "" : "s"}`;
+    }
+    return `${years} year${years === 1 ? "" : "s"} ${months} month${
+      months === 1 ? "" : "s"
+    }`;
+  };
+
+  const formatPostedDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30)
+      return `${Math.floor(diffDays / 7)} week${
+        Math.floor(diffDays / 7) === 1 ? "" : "s"
+      } ago`;
+    return `${Math.floor(diffDays / 30)} month${
+      Math.floor(diffDays / 30) === 1 ? "" : "s"
+    } ago`;
+  };
+
+  const filteredPets = pets.filter(
+    (pet) =>
+      pet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      pet.breed.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      pet.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      pet.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (userRole === 'rehome') {
+  if (userRole === "rehome") {
     return (
       <div className="min-h-screen bg-background p-4">
         <div className="max-w-md mx-auto space-y-6">
@@ -118,11 +77,16 @@ export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
               Help your furry friend find a loving new home
             </p>
           </div>
-          
-          <Button variant="hero" size="lg" className="w-full" onClick={onCreateListing}>
+
+          <Button
+            variant="hero"
+            size="lg"
+            className="w-full"
+            onClick={onCreateListing}
+          >
             + Create New Listing
           </Button>
-          
+
           <div className="text-center text-muted-foreground">
             <p>Your listings will appear here once created</p>
           </div>
@@ -138,17 +102,26 @@ export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
         <div className="max-w-md mx-auto p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-foreground">Find Your Pet Pal</h1>
+              <h1 className="text-xl font-bold text-foreground">
+                Find Your Pet Pal
+              </h1>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <MapPin className="w-4 h-4" />
                 <span>Near Mumbai</span>
               </div>
             </div>
-            <Button variant="ghost" size="icon">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                // TODO: Implement filter functionality
+                console.log("Filter clicked");
+              }}
+            >
               <Filter className="w-5 h-5" />
             </Button>
           </div>
-          
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -163,32 +136,66 @@ export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
 
       {/* Pet Grid */}
       <div className="max-w-md mx-auto p-4">
-        <div className="grid gap-4">
-          {filteredPets.map((pet, index) => (
-            <div 
-              key={pet.id}
-              className="animate-slide-up"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              <PetCard
-                pet={pet}
-                onWishlist={handleWishlist}
-                onViewDetails={handleViewDetails}
-                isWishlisted={wishlistedPets.has(pet.id)}
-              />
-            </div>
-          ))}
-        </div>
-        
-        {filteredPets.length === 0 && (
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-card rounded-lg p-4 animate-pulse">
+                <div className="h-48 bg-muted rounded-md mb-4"></div>
+                <div className="h-4 bg-muted rounded mb-2"></div>
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {filteredPets.map((pet, index) => (
+              <div
+                key={pet.id}
+                className="animate-slide-up"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <PetCard
+                  pet={{
+                    id: pet.id,
+                    name: pet.name,
+                    breed: pet.breed,
+                    petType: pet.type,
+                    age: formatAge(pet.age),
+                    gender: pet.gender as "male" | "female",
+                    location: pet.location,
+                    images: pet.image_urls || [],
+                    description: pet.description,
+                    isVaccinated: true, // Default to true, can be enhanced later
+                    postedDate: formatPostedDate(pet.created_at),
+                  }}
+                  onWishlist={handleWishlist}
+                  onViewDetails={handleViewDetails}
+                  isWishlisted={savedPets.includes(pet.id)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {filteredPets.length === 0 && !isLoading && (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔍</div>
+            <div className="text-6xl mb-4">{searchQuery ? "🔍" : "🐾"}</div>
             <h3 className="text-lg font-medium text-foreground mb-2">
-              No pets found
+              {searchQuery ? "No pets found" : "No pets available yet"}
             </h3>
-            <p className="text-muted-foreground">
-              Try searching for dogs, cats, birds, rabbits, or other pets
+            <p className="text-muted-foreground mb-4">
+              {searchQuery
+                ? "Try searching for dogs, cats, birds, rabbits, or other pets"
+                : "Be the first to list a pet for adoption!"}
             </p>
+            {!searchQuery && onCreateListing && (
+              <Button
+                onClick={onCreateListing}
+                className="bg-gradient-to-r from-primary-coral to-pet-orange text-white"
+              >
+                List Your Pet
+              </Button>
+            )}
           </div>
         )}
       </div>
