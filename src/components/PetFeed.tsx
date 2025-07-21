@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Filter, MapPin } from "lucide-react";
+import { Search, Filter, MapPin, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PetCard } from "./PetCard";
@@ -192,6 +192,18 @@ export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
           </div>
         )}
       </div>
+
+      {/* Floating Action Button for Creating Listings */}
+      {onCreateListing && (
+        <Button
+          onClick={onCreateListing}
+          size="lg"
+          className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-primary-coral to-pet-orange text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 z-30"
+          aria-label="Create pet listing"
+        >
+          <Plus className="w-6 h-6" />
+        </Button>
+      )}
     </div>
   );
 }
