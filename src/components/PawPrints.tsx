@@ -184,7 +184,8 @@ export function PawPrints() {
       {/* Floating Action Button */}
       <Button
         onClick={() => setShowPostModal(true)}
-        className="fixed bottom-20 right-4 h-14 w-14 rounded-full bg-gradient-primary shadow-button-hover hover:shadow-lg transition-all duration-300 animate-pulse"
+        variant="hero"
+        className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-button-hover hover:shadow-lg transition-all duration-300 animate-pulse"
         size="icon"
       >
         <div className="relative">

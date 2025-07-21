@@ -80,15 +80,10 @@ export function PawPostModal({ open, onClose, onPost }: PawPostModalProps) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md mx-auto bg-background border border-border/20 shadow-xl">
         <DialogHeader className="border-b border-border/20 pb-4">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-              <span className="text-xl">🐾</span>
-              Share a Paw Moment
-            </DialogTitle>
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+            <span className="text-xl">🐾</span>
+            Share a Paw Moment
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -168,7 +163,8 @@ export function PawPostModal({ open, onClose, onPost }: PawPostModalProps) {
             Cancel
           </Button>
           <Button 
-            className="flex-1 bg-gradient-primary hover:shadow-button-hover transition-all duration-300"
+            variant="hero"
+            className="flex-1"
             onClick={handlePost}
           >
             Post Paw 🐾
