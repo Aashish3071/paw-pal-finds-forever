@@ -3,25 +3,49 @@ import { Search, Filter, MapPin, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PetCard } from "./PetCard";
-import { usePets, useSavedPets } from "@/hooks/usePets";
+import { PetDetails } from "./PetDetails";
+import { usePets, useSavedPets, Pet } from "@/hooks/usePets";
+import { useConversations } from "@/hooks/useConversations";
 
 interface PetFeedProps {
   userRole: "adopt" | "rehome";
   onCreateListing?: () => void;
+  onNavigateToMessages?: (conversationId?: string) => void;
 }
 
-export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
+export function PetFeed({
+  userRole,
+  onCreateListing,
+  onNavigateToMessages,
+}: PetFeedProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
   const { pets, isLoading } = usePets();
   const { savedPets, toggleSavedPet } = useSavedPets();
+  const { createConversation } = useConversations();
 
   const handleWishlist = (petId: string) => {
     toggleSavedPet(petId);
   };
 
   const handleViewDetails = (petId: string) => {
-    console.log("View details for pet:", petId);
-    // TODO: Navigate to pet details page
+    const pet = pets.find((p) => p.id === petId);
+    if (pet) {
+      setSelectedPet(pet);
+    }
+  };
+
+  const handleStartChat = (petId: string, ownerId: string) => {
+    createConversation({
+      pet_id: petId,
+      owner_id: ownerId,
+      initial_message: "Hi! I'm interested in your pet.",
+    });
+
+    // Navigate to Messages tab
+    if (onNavigateToMessages) {
+      onNavigateToMessages();
+    }
   };
 
   const formatAge = (ageInMonths: number) => {
@@ -91,6 +115,16 @@ export function PetFeed({ userRole, onCreateListing }: PetFeedProps) {
             <p>Your listings will appear here once created</p>
           </div>
         </div>
+
+        {/* Pet Details Modal */}
+        {selectedPet && (
+          <PetDetails
+            pet={selectedPet}
+            isOpen={!!selectedPet}
+            onClose={() => setSelectedPet(null)}
+            onStartChat={handleStartChat}
+          />
+        )}
       </div>
     );
   }

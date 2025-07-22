@@ -24,9 +24,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { usePets } from "@/hooks/usePets";
 
 const petSchema = z.object({
   name: z.string().min(1, "Pet name is required"),
+  type: z.enum(["Dog", "Cat", "Bird", "Rabbit", "Fish", "Other"], {
+    required_error: "Please select pet type",
+  }),
   breed: z.string().min(1, "Breed is required"),
   age: z.string().min(1, "Age is required"),
   gender: z.enum(["male", "female"], {
@@ -52,11 +56,13 @@ interface PetListingFormProps {
 export const PetListingForm = ({ onBack }: PetListingFormProps) => {
   const [photos, setPhotos] = useState<File[]>([]);
   const { toast } = useToast();
+  const { createPet, isCreating } = usePets();
 
   const form = useForm<PetFormData>({
     resolver: zodResolver(petSchema),
     defaultValues: {
       name: "",
+      type: undefined,
       breed: "",
       age: "",
       location: "",
@@ -89,21 +95,17 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
     // Convert form data to match database schema
     const petData = {
       name: data.name,
-      type: "Dog", // This should be dynamic based on form, adding for now
+      type: data.type,
       breed: data.breed,
       gender: data.gender,
       age: data.age,
       description: `${data.temperament}\n\nReason for rehoming: ${data.reason}`,
       location: data.location,
-      image_urls: [], // TODO: Handle file uploads to Supabase Storage
+      image_urls: photos.length > 0 ? [URL.createObjectURL(photos[0])] : [], // Use the first photo as a placeholder
     };
 
-    // For now, show success message. TODO: Integrate with usePets hook
-    toast({
-      title: "Listing created!",
-      description: "Your pet listing has been posted successfully.",
-    });
-
+    // Create the pet using the hook
+    createPet(petData);
     onBack();
   };
 
@@ -192,6 +194,37 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
                     )}
                   />
 
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Pet Type</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select pet type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Dog">Dog</SelectItem>
+                            <SelectItem value="Cat">Cat</SelectItem>
+                            <SelectItem value="Bird">Bird</SelectItem>
+                            <SelectItem value="Rabbit">Rabbit</SelectItem>
+                            <SelectItem value="Fish">Fish</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
                   <FormField
                     control={form.control}
                     name="breed"
@@ -367,8 +400,9 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
                   type="submit"
                   className="w-full bg-gradient-to-r from-primary-coral to-pet-orange text-white hover:shadow-lg hover:scale-105 transition-all duration-300"
                   size="lg"
+                  disabled={isCreating}
                 >
-                  Create Listing
+                  {isCreating ? "Creating Listing..." : "Create Listing"}
                 </Button>
               </form>
             </Form>

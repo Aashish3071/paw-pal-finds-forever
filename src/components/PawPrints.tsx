@@ -5,28 +5,92 @@ import {
   Share,
   MoreHorizontal,
   Plus,
+  UserPlus,
+  UserMinus,
+  Repeat2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PawPostModal } from "./PawPostModal";
-import { usePosts } from "@/hooks/usePosts";
+import { PostDetailView } from "./PostDetailView";
+import { usePosts, Post } from "@/hooks/usePosts";
+import { useFollows } from "@/hooks/useFollows";
+import { useToast } from "@/hooks/use-toast";
 
 export function PawPrints() {
   const [showPostModal, setShowPostModal] = useState(false);
-  const { posts, isLoading, createPost, toggleLike } = usePosts();
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const {
+    posts,
+    isLoading,
+    createPost,
+    toggleLike,
+    toggleRepost,
+    isTogglingRepost,
+  } = usePosts();
+  const { isFollowing, toggleFollow } = useFollows();
+  const { toast } = useToast();
 
   const handleLike = (postId: string) => {
     toggleLike(postId);
   };
 
-  const handleNewPost = (postData: any) => {
+  const handleNewPost = (postData: {
+    content: string;
+    image?: string;
+    petType?: string;
+  }) => {
     createPost({
       content: postData.content,
       image_urls: postData.image ? [postData.image] : [],
       petType: postData.petType,
     });
     setShowPostModal(false);
+  };
+
+  const handlePostClick = (postId: string) => {
+    const post = posts.find((p) => p.id === postId);
+    if (post) {
+      setSelectedPost(post);
+    }
+  };
+
+  const handleCommentClick = (e: React.MouseEvent, postId: string) => {
+    e.stopPropagation(); // Prevent triggering post click
+    // Comment button no longer expands - only post click opens detail view
+  };
+
+  const handleShareClick = (post: Post) => {
+    if (navigator.share) {
+      navigator.share({
+        title: `${post.user?.name}'s post on PawPal`,
+        text: post.content,
+        url: window.location.href,
+      });
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Link copied!",
+        description: "Post link has been copied to clipboard.",
+      });
+    }
+  };
+
+  const handleFollowClick = (userId: string) => {
+    toggleFollow(userId);
+  };
+
+  const handleRepostClick = (e: React.MouseEvent, postId: string) => {
+    e.stopPropagation();
+    toggleRepost(postId);
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -41,6 +105,24 @@ export function PawPrints() {
     if (diffDays < 7) return `${diffDays}d ago`;
     return `${Math.floor(diffDays / 7)}w ago`;
   };
+
+  // If a post is selected, show the detail view
+  if (selectedPost) {
+    return (
+      <PostDetailView
+        post={selectedPost}
+        onBack={() => setSelectedPost(null)}
+        onLike={handleLike}
+        onRepost={(postId: string) =>
+          handleRepostClick({} as React.MouseEvent, postId)
+        }
+        onShare={handleShareClick}
+        onFollow={handleFollowClick}
+        isLiking={false}
+        isReposting={isTogglingRepost}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-warm-cream/30 to-background pb-20">
@@ -104,8 +186,9 @@ export function PawPrints() {
           posts.map((post, index) => (
             <Card
               key={post.id}
-              className="border-border/20 shadow-card animate-slide-up"
+              className="border-border/20 shadow-card animate-slide-up cursor-pointer hover:shadow-lg transition-all duration-200"
               style={{ animationDelay: `${index * 100}ms` }}
+              onClick={() => handlePostClick(post.id)}
             >
               <CardContent className="p-4">
                 {/* User Header */}
@@ -130,9 +213,35 @@ export function PawPrints() {
                       </p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleFollowClick(post.user_id)}
+                      >
+                        {isFollowing(post.user_id) ? (
+                          <>
+                            <UserMinus className="w-4 h-4 mr-2" />
+                            Unfollow {post.user?.name}
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Follow {post.user?.name}
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 {/* Content */}
@@ -152,7 +261,10 @@ export function PawPrints() {
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center justify-between pt-2 border-t border-border/20">
+                <div
+                  className="flex items-center justify-between pt-2 border-t border-border/20"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="flex items-center gap-4">
                     <Button
                       variant="ghost"
@@ -162,7 +274,10 @@ export function PawPrints() {
                           ? "text-primary-coral"
                           : "text-muted-foreground"
                       }`}
-                      onClick={() => handleLike(post.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLike(post.id);
+                      }}
                     >
                       <Heart
                         className={`h-4 w-4 ${
@@ -176,22 +291,48 @@ export function PawPrints() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-auto p-1 gap-2 text-muted-foreground"
+                      className="h-auto p-1 gap-2 hover:text-primary-coral transition-colors text-muted-foreground"
+                      onClick={(e) => handleCommentClick(e, post.id)}
                     >
                       <MessageCircle className="h-4 w-4" />
                       <span className="text-sm">
                         {post.comments_count || 0}
                       </span>
                     </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`h-auto p-1 gap-2 transition-colors ${
+                        post.is_reposted
+                          ? "text-green-600 hover:text-green-700"
+                          : "text-muted-foreground hover:text-green-600"
+                      }`}
+                      onClick={(e) => handleRepostClick(e, post.id)}
+                      disabled={isTogglingRepost}
+                    >
+                      <Repeat2
+                        className={`h-4 w-4 ${
+                          isTogglingRepost ? "animate-spin" : ""
+                        }`}
+                      />
+                      <span className="text-sm">{post.reposts_count || 0}</span>
+                    </Button>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-auto p-1 text-muted-foreground"
+                    className="h-auto p-1 text-muted-foreground hover:text-primary-coral"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleShareClick(post);
+                    }}
                   >
                     <Share className="h-4 w-4" />
                   </Button>
                 </div>
+
+                {/* Comments removed - now handled by PostDetailView */}
               </CardContent>
             </Card>
           ))

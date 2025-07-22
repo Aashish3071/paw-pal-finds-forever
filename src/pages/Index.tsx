@@ -5,24 +5,26 @@ import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { PawPrints } from "@/components/PawPrints";
 import { PetFeed } from "@/components/PetFeed";
-import { Messages } from "@/components/Messages";
+import { MessagesUpdated } from "@/components/MessagesUpdated";
 import { Profile } from "@/components/Profile";
 import { PetListingForm } from "@/components/PetListingForm";
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'pawprints' | 'messages' | 'profile'>('pawprints');
+  const [activeTab, setActiveTab] = useState<
+    "home" | "pawprints" | "messages" | "profile"
+  >("pawprints");
   const [showListingForm, setShowListingForm] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setIsLoading(false);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setIsLoading(false);
+    });
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -63,13 +65,19 @@ const Index = () => {
   // Render main app tabs
   const renderActiveTab = () => {
     switch (activeTab) {
-      case 'home':
-        return <PetFeed userRole="adopt" onCreateListing={() => setShowListingForm(true)} />;
-      case 'pawprints':
+      case "home":
+        return (
+          <PetFeed
+            userRole="adopt"
+            onCreateListing={() => setShowListingForm(true)}
+            onNavigateToMessages={() => setActiveTab("messages")}
+          />
+        );
+      case "pawprints":
         return <PawPrints />;
-      case 'messages':
-        return <Messages />;
-      case 'profile':
+      case "messages":
+        return <MessagesUpdated />;
+      case "profile":
         return <Profile />;
       default:
         return <PawPrints />;

@@ -107,12 +107,39 @@ export const usePets = () => {
     },
   });
 
+  const markAsAdoptedMutation = useMutation({
+    mutationFn: async (petId: string) => {
+      const { error } = await supabase
+        .from("pets")
+        .update({ is_adopted: true })
+        .eq("id", petId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pets"] });
+      toast({
+        title: "Success!",
+        description: "Pet has been marked as adopted.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update pet status.",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     pets,
     isLoading,
     error,
     createPet: createPetMutation.mutate,
     isCreating: createPetMutation.isPending,
+    markPetAsAdopted: markAsAdoptedMutation.mutate,
+    isUpdatingStatus: markAsAdoptedMutation.isPending,
   };
 };
 
