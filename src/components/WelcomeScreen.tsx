@@ -88,7 +88,7 @@ export const WelcomeScreen = ({ onAuthSuccess }: WelcomeScreenProps) => {
         </div>
 
         {/* Feature Highlights */}
-        <div className="flex flex-row items-center justify-center space-x-4 text-muted-foreground mb-4">
+        <div className="flex flex-row items-center justify-center space-x-4 text-muted-foreground mb-8">
           <div className="flex items-center space-x-1 bg-card/50 backdrop-blur-sm px-2 py-1 rounded-full">
             <Heart className="w-4 h-4 text-primary-coral" />
             <span className="text-xs font-medium">100% Free</span>
