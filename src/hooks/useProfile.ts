@@ -35,7 +35,7 @@ export const useProfile = () => {
       if (!user) throw new Error("Not authenticated");
 
       let { data, error } = await supabase
-        .from("users" as any)
+        .from("users")
         .select("*")
         .eq("id", user.id)
         .single();
@@ -43,7 +43,7 @@ export const useProfile = () => {
       // If user doesn't exist in users table, create them
       if (error && error.code === "PGRST116") {
         const { data: newUser, error: insertError } = await supabase
-          .from("users" as any)
+          .from("users")
           .insert({
             id: user.id,
             name: "Alex Johnson",
@@ -56,11 +56,11 @@ export const useProfile = () => {
           .single();
 
         if (insertError) throw insertError;
-        return newUser as UserProfile;
+        return newUser as any as UserProfile;
       }
 
       if (error) throw error;
-      return data as UserProfile;
+      return data as any as UserProfile;
     },
     staleTime: 30000,
     retry: 1,

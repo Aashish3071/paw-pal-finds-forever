@@ -24,7 +24,6 @@ export function PawPrints() {
     createPost({
       content: postData.content,
       image_urls: postData.image ? [postData.image] : [],
-      video_url: postData.video || null,
       petType: postData.petType,
     });
     setShowPostModal(false);
@@ -148,17 +147,6 @@ export function PawPrints() {
                       src={post.image_urls[0]}
                       alt="Pet post"
                       className="w-full h-64 object-cover hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                )}
-                {post.video_url && (
-                  <div className="mb-3 rounded-xl overflow-hidden">
-                    <video
-                      src={post.video_url}
-                      className="w-full h-64 object-cover"
-                      controls
-                      muted
-                      playsInline
                     />
                   </div>
                 )}
