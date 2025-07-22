@@ -88,7 +88,7 @@ export const WelcomeScreen = ({ onAuthSuccess }: WelcomeScreenProps) => {
         </div>
 
         {/* Feature Highlights */}
-        <div className="flex flex-row items-center justify-center space-x-4 text-muted-foreground mb-8">
+        <div className="flex flex-row items-center justify-center space-x-4 text-muted-foreground">
           <div className="flex items-center space-x-1 bg-card/50 backdrop-blur-sm px-2 py-1 rounded-full">
             <Heart className="w-4 h-4 text-primary-coral" />
             <span className="text-xs font-medium">100% Free</span>
@@ -102,9 +102,11 @@ export const WelcomeScreen = ({ onAuthSuccess }: WelcomeScreenProps) => {
             <span className="text-xs font-medium">Local matches</span>
           </div>
         </div>
+      </div>
 
-        {/* Footer Message */}
-        <p className="text-xs text-muted-foreground/70 text-center">
+      {/* Footer Message - Positioned at absolute bottom */}
+      <div className="absolute bottom-4 left-0 right-0 text-center">
+        <p className="text-xs text-muted-foreground/70">
           Made with ❤️ for pets and their humans
         </p>
       </div>
