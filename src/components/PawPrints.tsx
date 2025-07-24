@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PawPostModal } from "./PawPostModal";
 import { PostDetailView } from "./PostDetailView";
+import { InlineComments } from "./InlineComments";
 import { usePosts, Post } from "@/hooks/usePosts";
 import { useFollows } from "@/hooks/useFollows";
 import { useToast } from "@/hooks/use-toast";
@@ -331,9 +332,10 @@ export function PawPrints() {
                     <Share className="h-4 w-4" />
                   </Button>
                 </div>
-
-                {/* Comments removed - now handled by PostDetailView */}
               </CardContent>
+
+              {/* Inline Comments Section */}
+              <InlineComments postId={post.id} isExpanded={false} />
             </Card>
           ))
         )}
