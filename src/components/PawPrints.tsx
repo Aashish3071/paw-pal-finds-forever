@@ -8,6 +8,7 @@ import {
   UserPlus,
   UserMinus,
   Repeat2,
+  Bookmark,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,7 +21,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PawPostModal } from "./PawPostModal";
 import { PostDetailView } from "./PostDetailView";
-import { InlineComments } from "./InlineComments";
 import { usePosts, Post } from "@/hooks/usePosts";
 import { useFollows } from "@/hooks/useFollows";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,9 @@ import { useToast } from "@/hooks/use-toast";
 export function PawPrints() {
   const [showPostModal, setShowPostModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [bookmarkedPosts, setBookmarkedPosts] = useState<Set<string>>(
+    new Set()
+  );
   const {
     posts,
     isLoading,
@@ -57,6 +60,7 @@ export function PawPrints() {
   };
 
   const handlePostClick = (postId: string) => {
+    // Open the post in detail view (Twitter-style)
     const post = posts.find((p) => p.id === postId);
     if (post) {
       setSelectedPost(post);
@@ -65,7 +69,11 @@ export function PawPrints() {
 
   const handleCommentClick = (e: React.MouseEvent, postId: string) => {
     e.stopPropagation(); // Prevent triggering post click
-    // Comment button no longer expands - only post click opens detail view
+    // Comment button also opens the post detail view
+    const post = posts.find((p) => p.id === postId);
+    if (post) {
+      setSelectedPost(post);
+    }
   };
 
   const handleShareClick = (post: Post) => {
@@ -92,6 +100,25 @@ export function PawPrints() {
   const handleRepostClick = (e: React.MouseEvent, postId: string) => {
     e.stopPropagation();
     toggleRepost(postId);
+  };
+
+  const handleBookmarkClick = (e: React.MouseEvent, postId: string) => {
+    e.stopPropagation();
+    const newBookmarkedPosts = new Set(bookmarkedPosts);
+    if (bookmarkedPosts.has(postId)) {
+      newBookmarkedPosts.delete(postId);
+      toast({
+        title: "Removed from bookmarks",
+        description: "Post removed from your bookmarks.",
+      });
+    } else {
+      newBookmarkedPosts.add(postId);
+      toast({
+        title: "Bookmarked!",
+        description: "Post saved to your bookmarks.",
+      });
+    }
+    setBookmarkedPosts(newBookmarkedPosts);
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -131,13 +158,20 @@ export function PawPrints() {
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border/20 z-10">
         <div className="max-w-md mx-auto p-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-coral to-pet-orange bg-clip-text text-transparent">
-                PawPrints
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Community stories & moments
-              </p>
+            <div className="flex items-center">
+              <img
+                src="/pet_logo_1.png"
+                alt="PawPal Logo"
+                className="h-8 w-auto mr-3 object-contain"
+              />
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-coral to-pet-orange bg-clip-text text-transparent">
+                  PawPrints
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Community stories & moments
+                </p>
+              </div>
             </div>
             <div className="text-2xl">🐾</div>
           </div>
@@ -209,7 +243,6 @@ export function PawPrints() {
                         {post.user?.name || "Anonymous"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {post.user?.location || "Unknown"} •{" "}
                         {formatTimeAgo(post.created_at)}
                       </p>
                     </div>
@@ -292,7 +325,7 @@ export function PawPrints() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-auto p-1 gap-2 hover:text-primary-coral transition-colors text-muted-foreground"
+                      className="h-auto p-1 gap-2 transition-colors text-muted-foreground hover:text-primary-coral"
                       onClick={(e) => handleCommentClick(e, post.id)}
                     >
                       <MessageCircle className="h-4 w-4" />
@@ -331,11 +364,26 @@ export function PawPrints() {
                   >
                     <Share className="h-4 w-4" />
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-auto p-1 transition-colors ${
+                      bookmarkedPosts.has(post.id)
+                        ? "text-blue-500 hover:text-blue-700"
+                        : "text-muted-foreground hover:text-blue-500"
+                    }`}
+                    onClick={(e) => handleBookmarkClick(e, post.id)}
+                  >
+                    <Bookmark
+                      className={`h-4 w-4 ${
+                        bookmarkedPosts.has(post.id) ? "fill-current" : ""
+                      }`}
+                    />
+                  </Button>
                 </div>
               </CardContent>
 
-              {/* Inline Comments Section */}
-              <InlineComments postId={post.id} isExpanded={false} />
+              {/* No inline comments - they show in detail view */}
             </Card>
           ))
         )}

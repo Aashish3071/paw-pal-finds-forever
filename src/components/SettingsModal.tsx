@@ -77,7 +77,12 @@ export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md mx-auto max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-center">
+          <DialogTitle className="text-xl font-bold text-center flex items-center justify-center gap-2">
+            <img
+              src="/pet_logo_1.png"
+              alt="PawPal Logo"
+              className="h-5 w-auto object-contain"
+            />
             Settings
           </DialogTitle>
         </DialogHeader>

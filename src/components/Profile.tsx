@@ -19,7 +19,14 @@ export function Profile() {
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border/20 z-10">
         <div className="max-w-md mx-auto p-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-foreground">Profile</h1>
+            <div className="flex items-center">
+              <img
+                src="/pet_logo_1.png"
+                alt="PawPal Logo"
+                className="h-8 w-auto mr-3 object-contain"
+              />
+              <h1 className="text-xl font-bold text-foreground">Profile</h1>
+            </div>
             <Button
               variant="ghost"
               size="icon"
@@ -58,15 +65,9 @@ export function Profile() {
               <>
                 <div className="flex items-center gap-3 mb-4">
                   <Avatar className="h-16 w-16 ring-2 ring-primary-coral/20">
-                    <AvatarImage
-                      src={
-                        profile?.avatar_url ||
-                        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200"
-                      }
-                      alt="Profile"
-                    />
-                    <AvatarFallback className="text-lg font-semibold">
-                      {profile?.name?.charAt(0) || "U"}
+                    <AvatarImage src={profile?.avatar_url} alt="Profile" />
+                    <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-primary-coral/20 to-pet-orange/20 text-primary-coral">
+                      {profile?.name?.charAt(0) || "🐾"}
                     </AvatarFallback>
                   </Avatar>
 

@@ -135,13 +135,20 @@ export function PetFeed({
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border z-10">
         <div className="max-w-md mx-auto p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-foreground">
-                Find Your Pet Pal
-              </h1>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4" />
-                <span>Near Mumbai</span>
+            <div className="flex items-center">
+              <img
+                src="/pet_logo_1.png"
+                alt="PawPal Logo"
+                className="h-8 w-auto mr-3 object-contain"
+              />
+              <div>
+                <h1 className="text-xl font-bold text-foreground">
+                  Find Your Pet Pal
+                </h1>
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <MapPin className="w-4 h-4" />
+                  <span>Near Mumbai</span>
+                </div>
               </div>
             </div>
             <Button

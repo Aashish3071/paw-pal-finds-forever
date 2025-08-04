@@ -38,7 +38,11 @@ export const WelcomeScreen = ({ onAuthSuccess }: WelcomeScreenProps) => {
         {/* Logo Animation */}
         <div className="mb-8 animate-fade-in">
           <div className="flex items-center justify-center mb-4">
-            <PawPrint className="w-10 h-10 text-primary-coral mr-2 animate-bounce" />
+            <img
+              src="/pet_logo_1.png"
+              alt="PawPal Logo"
+              className="h-10 w-auto mr-3 object-contain"
+            />
             <h1 className="text-3xl md:text-4xl font-bold text-foreground">
               PawPal
             </h1>

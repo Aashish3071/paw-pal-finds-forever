@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { InlineComments } from "./InlineComments";
+import { AdvancedComments } from "./AdvancedComments";
 import { Post } from "@/hooks/usePosts";
 import { useFollows } from "@/hooks/useFollows";
 
@@ -42,6 +42,7 @@ export function PostDetailView({
   isReposting = false,
 }: PostDetailViewProps) {
   const { isFollowing } = useFollows();
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -55,6 +56,25 @@ export function PostDetailView({
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
     if (diffInMinutes < 10080) return `${Math.floor(diffInMinutes / 1440)}d`;
     return date.toLocaleDateString();
+  };
+
+  const formatFullTimestamp = (dateString: string) => {
+    const date = new Date(dateString);
+    const timeOptions: Intl.DateTimeFormatOptions = {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    };
+    const dateOptions: Intl.DateTimeFormatOptions = {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    };
+
+    const time = date.toLocaleTimeString("en-US", timeOptions);
+    const formattedDate = date.toLocaleDateString("en-US", dateOptions);
+
+    return `${time} · ${formattedDate}`;
   };
 
   const handleLikeClick = (e: React.MouseEvent) => {
@@ -77,8 +97,14 @@ export function PostDetailView({
     onFollow(post.user_id);
   };
 
+  const handleBookmarkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsBookmarked(!isBookmarked);
+    // In real app: toggleBookmark(post.id);
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header with Back Button */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border/20">
         <div className="flex items-center gap-4 p-4">
@@ -111,9 +137,6 @@ export function PostDetailView({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-foreground hover:text-primary-coral transition-colors cursor-pointer">
                       {post.user?.name || "Anonymous"}
-                    </span>
-                    <span className="text-muted-foreground/70 text-sm">
-                      {post.user?.location}
                     </span>
                   </div>
                   <div className="text-sm text-muted-foreground">
@@ -159,41 +182,72 @@ export function PostDetailView({
               )}
             </div>
 
-            {/* Engagement Stats */}
-            <div className="flex items-center gap-6 py-3 border-y border-border/20 text-sm text-muted-foreground">
-              {post.likes_count > 0 && (
-                <span>
-                  <strong className="text-foreground">
-                    {post.likes_count}
-                  </strong>{" "}
-                  Likes
-                </span>
-              )}
-              {post.reposts_count > 0 && (
-                <span>
-                  <strong className="text-foreground">
-                    {post.reposts_count}
-                  </strong>{" "}
-                  Reposts
-                </span>
-              )}
-              {post.comments_count > 0 && (
-                <span>
-                  <strong className="text-foreground">
-                    {post.comments_count}
-                  </strong>{" "}
-                  Comments
-                </span>
-              )}
+            {/* Post Timestamp */}
+            <div className="text-sm text-muted-foreground py-2">
+              <span className="text-foreground">
+                {formatFullTimestamp(post.created_at)}
+              </span>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-around py-3">
+            {/* Detailed Stats */}
+            <div className="flex items-center gap-6 py-3 border-y border-border/20 text-sm">
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-foreground">
+                  {post.reposts_count || 0}
+                </span>
+                <span className="text-muted-foreground">Reposts</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-foreground">
+                  {post.comments_count || 0}
+                </span>
+                <span className="text-muted-foreground">Quotes</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-foreground">
+                  {post.likes_count || 0}
+                </span>
+                <span className="text-muted-foreground">Likes</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-foreground">
+                  {post.bookmarks_count || 0}
+                </span>
+                <span className="text-muted-foreground">Bookmarks</span>
+              </div>
+            </div>
+
+            {/* Action Buttons - Twitter Style */}
+            <div className="flex items-center justify-between py-2 px-2">
               <Button
                 variant="ghost"
                 size="sm"
-                className={`flex items-center gap-2 px-4 py-2 hover:bg-red-50 hover:text-red-600 transition-colors ${
-                  post.is_liked ? "text-red-600" : "text-muted-foreground"
+                className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+                onClick={handleLikeClick}
+                disabled={isLiking}
+              >
+                <MessageCircle className="h-5 w-5" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full text-muted-foreground hover:text-green-600 transition-colors"
+                onClick={handleRepostClick}
+                disabled={isReposting}
+              >
+                <Repeat2
+                  className={`h-5 w-5 ${isReposting ? "animate-spin" : ""}`}
+                />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full transition-colors ${
+                  post.is_liked
+                    ? "text-red-600"
+                    : "text-muted-foreground hover:text-red-600"
                 }`}
                 onClick={handleLikeClick}
                 disabled={isLiking}
@@ -201,40 +255,52 @@ export function PostDetailView({
                 <Heart
                   className={`h-5 w-5 ${post.is_liked ? "fill-current" : ""}`}
                 />
-                <span>Like</span>
               </Button>
 
               <Button
                 variant="ghost"
                 size="sm"
-                className={`flex items-center gap-2 px-4 py-2 hover:bg-green-50 hover:text-green-600 transition-colors ${
-                  post.is_reposted ? "text-green-600" : "text-muted-foreground"
+                className={`flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full transition-colors ${
+                  isBookmarked
+                    ? "text-blue-500"
+                    : "text-muted-foreground hover:text-blue-500"
                 }`}
-                onClick={handleRepostClick}
-                disabled={isReposting}
+                onClick={handleBookmarkClick}
               >
-                <Repeat2
-                  className={`h-5 w-5 ${isReposting ? "animate-spin" : ""}`}
-                />
-                <span>Repost</span>
+                <svg
+                  className="h-5 w-5"
+                  fill={isBookmarked ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                  />
+                </svg>
               </Button>
 
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex items-center gap-2 px-4 py-2 hover:bg-blue-50 hover:text-blue-600 transition-colors text-muted-foreground"
+                className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded-full text-muted-foreground hover:text-foreground transition-colors"
                 onClick={handleShareClick}
               >
                 <Share className="h-5 w-5" />
-                <span>Share</span>
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Comments Section */}
-        <div className="border-t border-border/20">
-          <InlineComments postId={post.id} isExpanded={true} />
+        {/* Comments Section - Twitter Style */}
+        <div className="mt-4">
+          <AdvancedComments
+            postId={post.id}
+            postOwnerId={post.user_id}
+            isExpanded={true}
+          />
         </div>
       </div>
     </div>

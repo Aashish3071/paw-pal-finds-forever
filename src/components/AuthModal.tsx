@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,13 +15,17 @@ import { PawPrint, Eye, EyeOff } from "lucide-react";
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  mode: 'login' | 'signup';
+  mode: "login" | "signup";
   onAuthSuccess: () => void;
 }
 
-export const AuthModal = ({ isOpen, onClose, mode: initialMode, onAuthSuccess }: AuthModalProps) => {
-  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
-
+export const AuthModal = ({
+  isOpen,
+  onClose,
+  mode: initialMode,
+  onAuthSuccess,
+}: AuthModalProps) => {
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +39,7 @@ export const AuthModal = ({ isOpen, onClose, mode: initialMode, onAuthSuccess }:
     setIsLoading(true);
 
     try {
-      if (mode === 'signup') {
+      if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -38,8 +47,8 @@ export const AuthModal = ({ isOpen, onClose, mode: initialMode, onAuthSuccess }:
             emailRedirectTo: `${window.location.origin}/`,
             data: {
               name: name,
-            }
-          }
+            },
+          },
         });
 
         if (error) throw error;
@@ -90,7 +99,7 @@ export const AuthModal = ({ isOpen, onClose, mode: initialMode, onAuthSuccess }:
 
   const switchMode = () => {
     resetForm();
-    setMode(mode === 'signup' ? 'login' : 'signup');
+    setMode(mode === "signup" ? "login" : "signup");
   };
 
   return (
@@ -98,21 +107,24 @@ export const AuthModal = ({ isOpen, onClose, mode: initialMode, onAuthSuccess }:
       <DialogContent className="sm:max-w-md bg-white rounded-3xl border-0 shadow-2xl">
         <DialogHeader className="text-center pb-4">
           <div className="flex items-center justify-center mb-4">
-            <PawPrint className="w-8 h-8 text-primary-coral mr-2" />
+            <img
+              src="/pet_logo_1.png"
+              alt="PawPal Logo"
+              className="h-8 w-auto mr-2 object-contain"
+            />
             <DialogTitle className="text-2xl font-bold text-warm-brown">
-              {mode === 'signup' ? 'Join PawPal' : 'Welcome Back'}
+              {mode === "signup" ? "Join PawPal" : "Welcome Back"}
             </DialogTitle>
           </div>
           <p className="text-warm-brown/70">
-            {mode === 'signup' 
-              ? 'Create your account to start connecting with pets' 
-              : 'Sign in to continue your pet journey'
-            }
+            {mode === "signup"
+              ? "Create your account to start connecting with pets"
+              : "Sign in to continue your pet journey"}
           </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === 'signup' && (
+          {mode === "signup" && (
             <div className="space-y-2">
               <Label htmlFor="name" className="text-warm-brown font-medium">
                 Full Name
@@ -186,24 +198,23 @@ export const AuthModal = ({ isOpen, onClose, mode: initialMode, onAuthSuccess }:
                 <span>Please wait...</span>
               </div>
             ) : (
-              <span>{mode === 'signup' ? 'Create Account' : 'Sign In'}</span>
+              <span>{mode === "signup" ? "Create Account" : "Sign In"}</span>
             )}
           </Button>
         </form>
 
         <div className="text-center pt-4 border-t border-warm-brown/10">
           <p className="text-warm-brown/70 text-sm">
-            {mode === 'signup' 
-              ? 'Already have an account?' 
-              : "Don't have an account?"
-            }
+            {mode === "signup"
+              ? "Already have an account?"
+              : "Don't have an account?"}
             <Button
               type="button"
               variant="link"
               onClick={switchMode}
               className="text-primary-coral hover:text-primary-coral/80 font-medium p-0 ml-1 h-auto"
             >
-              {mode === 'signup' ? 'Sign In' : 'Join PawPal'}
+              {mode === "signup" ? "Sign In" : "Join PawPal"}
             </Button>
           </p>
         </div>

@@ -51,11 +51,18 @@ export function MessagesUpdated() {
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border/20 z-10">
         <div className="max-w-md mx-auto p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Messages</h1>
-              <p className="text-sm text-muted-foreground">
-                Chat with adopters & shelters
-              </p>
+            <div className="flex items-center">
+              <img
+                src="/pet_logo_1.png"
+                alt="PawPal Logo"
+                className="h-8 w-auto mr-3 object-contain"
+              />
+              <div>
+                <h1 className="text-xl font-bold text-foreground">Messages</h1>
+                <p className="text-sm text-muted-foreground">
+                  Chat with adopters & shelters
+                </p>
+              </div>
             </div>
             <MessageCircle className="w-6 h-6 text-primary-coral" />
           </div>

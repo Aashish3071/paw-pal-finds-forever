@@ -118,7 +118,11 @@ export function PawPostModal({ open, onClose, onPost }: PawPostModalProps) {
       <DialogContent className="max-w-md mx-auto bg-background border border-border/20 shadow-xl">
         <DialogHeader className="border-b border-border/20 pb-4">
           <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-            <span className="text-xl">🐾</span>
+            <img
+              src="/pet_logo_1.png"
+              alt="PawPal Logo"
+              className="h-5 w-auto object-contain"
+            />
             Share a Paw Moment
           </DialogTitle>
         </DialogHeader>

@@ -20,6 +20,7 @@ export interface Post {
   likes_count?: number;
   comments_count?: number;
   reposts_count?: number;
+  bookmarks_count?: number;
   is_liked?: boolean;
   is_reposted?: boolean;
 }
