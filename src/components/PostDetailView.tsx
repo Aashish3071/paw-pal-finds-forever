@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Heart,
@@ -43,6 +43,11 @@ export function PostDetailView({
 }: PostDetailViewProps) {
   const { isFollowing } = useFollows();
   const [isBookmarked, setIsBookmarked] = useState(false);
+
+  // Ensure the post view starts at the top when component mounts
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [post.id]); // Re-scroll when post changes
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -121,7 +126,7 @@ export function PostDetailView({
       </div>
 
       {/* Post Content */}
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto" id="post-content">
         <Card className="border-0 shadow-none">
           <CardContent className="p-6">
             {/* User Info */}
@@ -177,6 +182,12 @@ export function PostDetailView({
                     src={post.image_urls[0]}
                     alt="Post content"
                     className="w-full h-auto object-cover"
+                    loading="eager"
+                    onLoad={() => {
+                      // Ensure scroll position remains at top after image loads
+                      if (window.scrollY === 0) return;
+                      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                    }}
                   />
                 </div>
               )}
