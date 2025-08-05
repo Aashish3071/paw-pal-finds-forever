@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useComments } from "@/hooks/useComments";
+import { useComments, Comment } from "@/hooks/useComments";
 
 interface AdvancedCommentsProps {
   postId: string;
@@ -64,6 +64,8 @@ interface EnhancedComment {
   created_at: string;
   parent_id?: string;
   reply_to_user_id?: string;
+  thread_level: number;
+  thread_path: string;
   reactions: CommentReaction[];
   replies: EnhancedComment[];
   isPinned: boolean;
@@ -107,19 +109,120 @@ export function AdvancedComments({
     return `${Math.floor(diffDays / 7)}w`;
   };
 
-  // Enhanced comments with basic structure (no threading until migration is applied)
+  // Advanced comment tree building with unlimited nesting
   const enhancedComments: EnhancedComment[] = useMemo(() => {
-    return comments.map((comment) => ({
-      ...comment,
-      user_id: comment.user_id,
-      parent_id: comment.parent_id,
-      reply_to_user_id: comment.reply_to_user_id,
-      reactions: [],
-      replies: [], // No threading for now
-      isPinned: false,
-      replyCount: 0,
-    }));
+    console.log("Comments data:", comments); // Debug log
+
+    // Check if advanced migration has been applied
+    const hasThreading = comments.some(
+      (comment) =>
+        comment.thread_level !== undefined && comment.thread_path !== undefined
+    );
+
+    if (hasThreading) {
+      console.log("Advanced threading detected, building tree structure");
+
+      // Comments are already sorted by thread_path from the query
+      // Transform flat list into tree structure
+      return buildCommentTree(comments);
+    } else {
+      // Check if basic migration has been applied
+      const hasBasicReplies = comments.some(
+        (comment) => comment.parent_id !== undefined
+      );
+
+      if (hasBasicReplies) {
+        console.log("Basic replies detected, building simple tree");
+        return buildBasicTree(comments);
+      } else {
+        // Fallback: treat all as top-level
+        console.log("No threading migration applied, showing flat structure");
+        return comments.map((comment) => ({
+          ...comment,
+          user_id: comment.user_id,
+          parent_id: comment.parent_id,
+          reply_to_user_id: comment.reply_to_user_id,
+          thread_level: comment.thread_level || 0,
+          thread_path: comment.thread_path || "1",
+          reactions: [],
+          replies: [],
+          isPinned: false,
+          replyCount: 0,
+        }));
+      }
+    }
   }, [comments]);
+
+  // Build advanced comment tree with unlimited nesting
+  const buildCommentTree = (flatComments: Comment[]): EnhancedComment[] => {
+    const commentMap = new Map<string, EnhancedComment>();
+    const rootComments: EnhancedComment[] = [];
+
+    // First pass: create all comment objects
+    flatComments.forEach((comment) => {
+      const enhancedComment: EnhancedComment = {
+        ...comment,
+        thread_level: comment.thread_level || 0,
+        thread_path: comment.thread_path || "1",
+        reactions: [],
+        replies: [],
+        isPinned: false,
+        replyCount: 0,
+      };
+      commentMap.set(comment.id, enhancedComment);
+    });
+
+    // Second pass: build tree structure
+    flatComments.forEach((comment) => {
+      const enhancedComment = commentMap.get(comment.id)!;
+
+      if (!comment.parent_id) {
+        // Top-level comment
+        rootComments.push(enhancedComment);
+      } else {
+        // Reply - add to parent's replies array
+        const parent = commentMap.get(comment.parent_id);
+        if (parent) {
+          parent.replies.push(enhancedComment);
+          parent.replyCount = parent.replies.length;
+        }
+      }
+    });
+
+    return rootComments;
+  };
+
+  // Build basic tree (2-level nesting only)
+  const buildBasicTree = (flatComments: Comment[]): EnhancedComment[] => {
+    const topLevelComments = flatComments.filter(
+      (comment) => !comment.parent_id
+    );
+    const replies = flatComments.filter((comment) => comment.parent_id);
+
+    return topLevelComments.map((comment) => {
+      const commentReplies = replies.filter(
+        (reply) => reply.parent_id === comment.id
+      );
+
+      return {
+        ...comment,
+        thread_level: comment.thread_level || 0,
+        thread_path: comment.thread_path || "1",
+        reactions: [],
+        replies: commentReplies.map((reply) => ({
+          ...reply,
+          thread_level: reply.thread_level || 1,
+          thread_path: reply.thread_path || "1.1",
+          reactions: [],
+          replies: [],
+          isPinned: false,
+          replyCount: 0,
+        })),
+        isPinned: false,
+        replyCount: commentReplies.length,
+      };
+    });
+  };
 
   const handleSubmitComment = () => {
     if (!newComment.trim()) return;
@@ -132,13 +235,15 @@ export function AdvancedComments({
 
   const handleSubmitReply = (parentId: string, replyToUserId: string) => {
     if (!replyText.trim()) return;
-    
-    // For now, create a regular comment until database migration is applied
+
+    // Create reply comment (works with or without migration)
     createComment({
       post_id: postId,
-      content: `@${comments.find(c => c.id === parentId)?.user?.name || 'user'} ${replyText.trim()}`,
+      content: replyText.trim(), // Direct reply like Twitter, no @mention needed
+      parent_id: parentId,
+      reply_to_user_id: replyToUserId,
     });
-    
+
     setReplyText("");
     setReplyingTo(null);
   };
@@ -154,37 +259,218 @@ export function AdvancedComments({
 
   const sortedComments = useMemo(() => {
     let sorted = [...enhancedComments];
-
     switch (sortBy) {
-      case "top":
-        sorted.sort((a, b) => {
-          const aTotal = a.reactions.reduce((sum, r) => sum + r.count, 0);
-          const bTotal = b.reactions.reduce((sum, r) => sum + r.count, 0);
-          return bTotal - aTotal;
-        });
-        break;
       case "recent":
         sorted.sort(
           (a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         break;
+      case "top":
+        sorted.sort((a, b) => {
+          const aReactions = a.reactions.reduce(
+            (sum, reaction) => sum + reaction.count,
+            0
+          );
+          const bReactions = b.reactions.reduce(
+            (sum, reaction) => sum + reaction.count,
+            0
+          );
+          if (aReactions !== bReactions) return bReactions - aReactions;
+          return (
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        });
+        break;
       case "controversial":
-        // Mock controversial sorting
-        sorted.sort(() => Math.random() - 0.5);
+        sorted.sort((a, b) => {
+          const aControversy =
+            (a.reactions.find((r) => r.type === "angry")?.count || 0) +
+            (a.reactions.find((r) => r.type === "sad")?.count || 0);
+          const bControversy =
+            (b.reactions.find((r) => r.type === "angry")?.count || 0) +
+            (b.reactions.find((r) => r.type === "sad")?.count || 0);
+          return bControversy - aControversy;
+        });
         break;
     }
-
-    // Pin comments at top
-    return sorted.sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return 0;
-    });
+    return sorted;
   }, [enhancedComments, sortBy]);
 
   // Use sorted comments directly since search is removed
   const filteredComments = sortedComments;
+
+  // Get visual styling based on thread level
+  const getThreadStyling = (level: number) => {
+    const maxIndent = 60; // Maximum indentation in pixels
+    const baseIndent = 20; // Base indentation per level
+    const indent = Math.min(level * baseIndent, maxIndent);
+
+    return {
+      marginLeft: level > 0 ? `${indent}px` : "0px",
+      borderLeft:
+        level > 0
+          ? `${level === 1 ? "2px" : "1px"} solid ${
+              level === 1
+                ? "hsl(var(--primary-coral))"
+                : level === 2
+                ? "hsl(var(--border))"
+                : "hsl(var(--border) / 0.5)"
+            }`
+          : "none",
+      paddingLeft: level > 0 ? "12px" : "0px",
+    };
+  };
+
+  // Get avatar size based on thread level
+  const getAvatarSize = (level: number) => {
+    if (level === 0) return "w-10 h-10"; // Main comments
+    if (level === 1) return "w-8 h-8"; // First level replies
+    if (level === 2) return "w-7 h-7"; // Second level replies
+    return "w-6 h-6"; // Deep replies (compact)
+  };
+
+  // Get font size based on thread level
+  const getFontSizing = (level: number) => {
+    if (level === 0) return "text-sm"; // Main comments
+    if (level <= 2) return "text-sm"; // Normal replies
+    return "text-xs"; // Deep replies (compact)
+  };
+
+  // Render individual comment with threading
+  const renderComment = (comment: EnhancedComment): React.ReactNode => {
+    const threadStyle = getThreadStyling(comment.thread_level);
+    const avatarSize = getAvatarSize(comment.thread_level);
+    const fontSize = getFontSizing(comment.thread_level);
+
+    return (
+      <div key={comment.id}>
+        <div className="mb-4" style={threadStyle}>
+          <div className="flex gap-3">
+            <Avatar className={`${avatarSize} flex-shrink-0`}>
+              <AvatarImage src={comment.user?.avatar_url} />
+              <AvatarFallback
+                className={`text-xs bg-muted text-foreground font-medium`}
+              >
+                {comment.user?.name?.charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex-1 min-w-0">
+              {/* User info and reply context */}
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`font-medium ${fontSize} text-foreground`}>
+                  {comment.user?.name || "Anonymous"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {formatTimeAgo(comment.created_at)}
+                </span>
+                {comment.reply_to_user && comment.thread_level > 0 && (
+                  <span className="text-xs text-primary-coral">
+                    replying to @{comment.reply_to_user.name}
+                  </span>
+                )}
+              </div>
+
+              {/* Comment content */}
+              <div className={`${fontSize} text-foreground mb-2`}>
+                {comment.content}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-6 px-2 ${fontSize} text-muted-foreground hover:text-primary-coral`}
+                  onClick={() => setReplyingTo(comment.id)}
+                >
+                  <Reply className="w-3 h-3 mr-1" />
+                  Reply
+                </Button>
+
+                {comment.replyCount > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {comment.replyCount}{" "}
+                    {comment.replyCount === 1 ? "reply" : "replies"}
+                  </span>
+                )}
+
+                {/* More actions for main comments */}
+                {comment.thread_level === 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                      >
+                        <MoreHorizontal className="w-3 h-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem
+                        onClick={() => handlePinComment(comment.id)}
+                      >
+                        <Pin className="w-3 h-3 mr-2" />
+                        {comment.isPinned ? "Unpin" : "Pin"} comment
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-red-600">
+                        Report comment
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+
+              {/* Reply Input */}
+              {replyingTo === comment.id && (
+                <div className="mt-3 pl-4 border-l-2 border-border/30">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Post your reply..."
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      className="flex-1 h-8 text-sm"
+                      onKeyPress={(e) =>
+                        e.key === "Enter" &&
+                        !e.shiftKey &&
+                        handleSubmitReply(comment.id, comment.user_id)
+                      }
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        handleSubmitReply(comment.id, comment.user_id)
+                      }
+                      disabled={!replyText.trim()}
+                      className="h-8 px-3"
+                    >
+                      Reply
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setReplyingTo(null)}
+                      className="h-8 px-3"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Render replies recursively */}
+        {comment.replies && comment.replies.length > 0 && (
+          <div>{comment.replies.map(renderComment)}</div>
+        )}
+      </div>
+    );
+  };
 
   if (!isExpanded) return null;
 
@@ -194,54 +480,38 @@ export function AdvancedComments({
       <div className="px-4 py-2 border-b border-border/20 bg-background">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-            Most relevant replies
-            <svg
-              className="w-3 h-3 text-muted-foreground"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
+            <MessageCircle className="w-4 h-4" />
+            Comments
+            {comments.length > 0 && (
+              <span className="text-xs bg-muted px-2 py-1 rounded-full">
+                {comments.length}
+              </span>
+            )}
           </h3>
-          <div className="flex items-center gap-2">
-            <Select
-              value={sortBy}
-              onValueChange={(value: SortOption) => setSortBy(value)}
-            >
-              <SelectTrigger className="w-20 h-7 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="top">Top</SelectItem>
-                <SelectItem value="recent">Recent</SelectItem>
-                <SelectItem value="controversial">Hot</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+
+          <Select
+            value={sortBy}
+            onValueChange={(value) => setSortBy(value as SortOption)}
+          >
+            <SelectTrigger className="w-32 h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="top">Top</SelectItem>
+              <SelectItem value="recent">Recent</SelectItem>
+              <SelectItem value="controversial">Controversial</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* Comments List - Scrollable */}
+      {/* Comments List */}
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
-          <div className="space-y-0 pb-24">
+          <div className="px-4 pb-4">
             {isLoading ? (
-              <div className="space-y-3 p-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex gap-3 animate-pulse">
-                    <div className="w-10 h-10 bg-muted rounded-full"></div>
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-muted rounded w-1/4"></div>
-                      <div className="h-4 bg-muted rounded w-3/4"></div>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-coral"></div>
               </div>
             ) : filteredComments.length === 0 ? (
               <div className="text-center py-12">
@@ -249,187 +519,9 @@ export function AdvancedComments({
                 <p className="text-muted-foreground">No comments yet</p>
               </div>
             ) : (
-              filteredComments.map((comment) => (
-                <div
-                  key={comment.id}
-                  className={`border-b border-border/20 px-4 py-3 hover:bg-muted/20 transition-colors ${
-                    comment.isPinned
-                      ? "bg-blue-50/50 border-l-4 border-l-blue-500"
-                      : ""
-                  }`}
-                >
-                  <div className="flex gap-3">
-                    <Avatar className="w-10 h-10 flex-shrink-0">
-                      <AvatarImage src={comment.user?.avatar_url} />
-                      <AvatarFallback className="text-xs bg-muted text-foreground font-medium">
-                        {comment.user?.name?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm text-foreground">
-                          {comment.user?.name || "Anonymous"}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          @
-                          {comment.user?.name
-                            ?.toLowerCase()
-                            .replace(/\s+/g, "") || "user"}
-                        </span>
-                        <span className="text-muted-foreground">·</span>
-                        <span className="text-sm text-muted-foreground">
-                          {formatTimeAgo(comment.created_at)}
-                        </span>
-                        {comment.isPinned && (
-                          <Pin className="w-4 h-4 text-blue-500" />
-                        )}
-                      </div>
-
-                      <p className="text-sm text-foreground leading-relaxed mb-3">
-                        {comment.content}
-                      </p>
-
-                      {/* Comment Reactions */}
-                      <div className="flex items-center gap-1 mb-2">
-                        {comment.reactions.map((reaction) => (
-                          <button
-                            key={reaction.type}
-                            onClick={() =>
-                              handleReaction(comment.id, reaction.type)
-                            }
-                            className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors ${
-                              reaction.userReacted
-                                ? "bg-blue-100 text-blue-600"
-                                : "hover:bg-muted/50"
-                            }`}
-                          >
-                            <span>{reactionEmojis[reaction.type].emoji}</span>
-                            <span>{reaction.count}</span>
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Comment Actions */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <button
-                            onClick={() => setReplyingTo(comment.id)}
-                            className="flex items-center gap-1 text-muted-foreground hover:text-blue-500 transition-colors text-xs"
-                          >
-                            <Reply className="w-3 h-3" />
-                            <span>Reply</span>
-                          </button>
-
-                          <div className="relative">
-                            <button
-                              onClick={() =>
-                                setShowReactionPicker(
-                                  showReactionPicker === comment.id
-                                    ? null
-                                    : comment.id
-                                )
-                              }
-                              className="flex items-center gap-1 text-muted-foreground hover:text-yellow-500 transition-colors text-xs"
-                            >
-                              <Smile className="w-3 h-3" />
-                              <span>React</span>
-                            </button>
-
-                            {showReactionPicker === comment.id && (
-                              <div className="absolute bottom-6 left-0 bg-background border border-border rounded-lg shadow-lg p-2 flex gap-1 z-10">
-                                {Object.entries(reactionEmojis).map(
-                                  ([type, { emoji }]) => (
-                                    <button
-                                      key={type}
-                                      onClick={() =>
-                                        handleReaction(
-                                          comment.id,
-                                          type as ReactionType
-                                        )
-                                      }
-                                      className="hover:bg-muted p-1 rounded text-lg"
-                                    >
-                                      {emoji}
-                                    </button>
-                                  )
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          {comment.replyCount > 0 && (
-                            <button className="text-xs text-blue-500 hover:underline">
-                              View {comment.replyCount} replies
-                            </button>
-                          )}
-                        </div>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                            >
-                              <MoreHorizontal className="w-3 h-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handlePinComment(comment.id)}
-                            >
-                              <Pin className="w-4 h-4 mr-2" />
-                              {comment.isPinned ? "Unpin" : "Pin"} comment
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
-                              Report comment
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-
-                      {/* Reply Input */}
-                      {replyingTo === comment.id && (
-                        <div className="mt-3 pl-4 border-l-2 border-border/30">
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder={`Reply to ${comment.user?.name}...`}
-                              value={replyText}
-                              onChange={(e) => setReplyText(e.target.value)}
-                              className="flex-1 h-8 text-sm"
-                              onKeyPress={(e) =>
-                                e.key === "Enter" &&
-                                !e.shiftKey &&
-                                handleSubmitReply(comment.id, comment.user_id)
-                              }
-                            />
-                            <Button
-                              size="sm"
-                              onClick={() => handleSubmitReply(comment.id, comment.user_id)}
-                              disabled={!replyText.trim()}
-                              className="h-8 px-3"
-                            >
-                              Reply
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setReplyingTo(null)}
-                              className="h-8 px-3"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Replies will be displayed here once database migration is applied */}
-                    </div>
-                  </div>
-                </div>
-              ))
+              <div className="space-y-2">
+                {filteredComments.map(renderComment)}
+              </div>
             )}
           </div>
         </ScrollArea>
@@ -444,42 +536,28 @@ export function AdvancedComments({
                 You
               </AvatarFallback>
             </Avatar>
+
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Add a comment..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && !e.shiftKey && handleSubmitComment()
-                  }
-                  className="flex-1 h-9 text-base bg-background border border-border/50 rounded-full px-4 focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 placeholder:text-muted-foreground/70 transition-all shadow-sm"
-                  disabled={isCreating}
-                />
+              <Input
+                placeholder="Add a comment..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyPress={(e) =>
+                  e.key === "Enter" && !e.shiftKey && handleSubmitComment()
+                }
+                className="mb-2"
+                disabled={isCreating}
+              />
+              <div className="flex justify-end">
                 <Button
                   onClick={handleSubmitComment}
                   disabled={!newComment.trim() || isCreating}
                   size="sm"
-                  className={`h-9 px-4 rounded-full font-semibold transition-all flex-shrink-0 ${
-                    newComment.trim()
-                      ? "bg-blue-500 hover:bg-blue-600 text-white"
-                      : "bg-blue-500/50 text-white/70 cursor-not-allowed"
-                  }`}
+                  className="bg-primary-coral hover:bg-primary-coral/90"
                 >
-                  {isCreating ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    "Post"
-                  )}
+                  {isCreating ? "Posting..." : "Post"}
                 </Button>
               </div>
-              {newComment.length > 0 && (
-                <div className="mt-1 text-right">
-                  <span className="text-xs text-muted-foreground">
-                    {newComment.length}/280
-                  </span>
-                </div>
-              )}
             </div>
           </div>
         </div>

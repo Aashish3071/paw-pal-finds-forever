@@ -10,6 +10,8 @@ export interface Comment {
   created_at: string;
   parent_id?: string;
   reply_to_user_id?: string;
+  thread_level: number;
+  thread_path: string;
   user: {
     name: string;
     avatar_url?: string;
@@ -18,6 +20,7 @@ export interface Comment {
     name: string;
     avatar_url?: string;
   };
+  reply_count?: number;
 }
 
 export interface CreateCommentData {
@@ -45,11 +48,12 @@ export const useComments = (postId: string) => {
         .select(
           `
           *,
-          user:users(name, avatar_url)
+          user:users(name, avatar_url),
+          reply_to_user:reply_to_user_id(name, avatar_url)
         `
         )
         .eq("post_id", postId)
-        .order("created_at", { ascending: true });
+        .order("thread_path", { ascending: true });
 
       if (error) throw error;
       return (data || []) as Comment[];
@@ -65,13 +69,24 @@ export const useComments = (postId: string) => {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Prepare insert data - include reply fields if they exist
+      const insertData: any = {
+        post_id: data.post_id,
+        user_id: user.id,
+        content: data.content,
+      };
+
+      // Add reply fields if provided (will work after migration)
+      if (data.parent_id) {
+        insertData.parent_id = data.parent_id;
+      }
+      if (data.reply_to_user_id) {
+        insertData.reply_to_user_id = data.reply_to_user_id;
+      }
+
       const { data: comment, error } = await supabase
         .from("comments")
-        .insert({
-          post_id: data.post_id,
-          user_id: user.id,
-          content: data.content,
-        })
+        .insert(insertData)
         .select()
         .single();
 
