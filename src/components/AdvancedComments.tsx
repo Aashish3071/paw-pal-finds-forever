@@ -107,30 +107,18 @@ export function AdvancedComments({
     return `${Math.floor(diffDays / 7)}w`;
   };
 
-  // Enhanced comments with real data structure and proper reply threading
+  // Enhanced comments with basic structure (no threading until migration is applied)
   const enhancedComments: EnhancedComment[] = useMemo(() => {
-    // Separate top-level comments from replies
-    const topLevelComments = comments.filter(comment => !comment.parent_id);
-    const replies = comments.filter(comment => comment.parent_id);
-    
-    // Build the comment tree
-    return topLevelComments.map((comment) => {
-      const commentReplies = replies.filter(reply => reply.parent_id === comment.id);
-      
-      return {
-        ...comment,
-        reactions: [],
-        replies: commentReplies.map(reply => ({
-          ...reply,
-          reactions: [],
-          replies: [], // For now, we'll support only one level of nesting
-          isPinned: false,
-          replyCount: 0,
-        })),
-        isPinned: false,
-        replyCount: commentReplies.length,
-      };
-    });
+    return comments.map((comment) => ({
+      ...comment,
+      user_id: comment.user_id,
+      parent_id: comment.parent_id,
+      reply_to_user_id: comment.reply_to_user_id,
+      reactions: [],
+      replies: [], // No threading for now
+      isPinned: false,
+      replyCount: 0,
+    }));
   }, [comments]);
 
   const handleSubmitComment = () => {
@@ -145,11 +133,10 @@ export function AdvancedComments({
   const handleSubmitReply = (parentId: string, replyToUserId: string) => {
     if (!replyText.trim()) return;
     
+    // For now, create a regular comment until database migration is applied
     createComment({
       post_id: postId,
-      content: replyText.trim(),
-      parent_id: parentId,
-      reply_to_user_id: replyToUserId,
+      content: `@${comments.find(c => c.id === parentId)?.user?.name || 'user'} ${replyText.trim()}`,
     });
     
     setReplyText("");
@@ -438,55 +425,7 @@ export function AdvancedComments({
                         </div>
                       )}
 
-                      {/* Replies */}
-                      {comment.replies && comment.replies.length > 0 && (
-                        <div className="mt-3 pl-4 border-l-2 border-border/20">
-                          {comment.replies.map((reply) => (
-                            <div key={reply.id} className="mb-3">
-                              <div className="flex gap-3">
-                                <Avatar className="w-8 h-8 flex-shrink-0">
-                                  <AvatarImage src={reply.user?.avatar_url} />
-                                  <AvatarFallback className="text-xs bg-muted text-foreground font-medium">
-                                    {reply.user?.name?.charAt(0) || "U"}
-                                  </AvatarFallback>
-                                </Avatar>
-                                
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-medium text-sm text-foreground">
-                                      {reply.user?.name || "Anonymous"}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {formatTimeAgo(reply.created_at)}
-                                    </span>
-                                  </div>
-                                  
-                                  <div className="text-sm text-foreground">
-                                    {reply.reply_to_user && (
-                                      <span className="text-primary-coral font-medium">
-                                        @{reply.reply_to_user.name}{" "}
-                                      </span>
-                                    )}
-                                    {reply.content}
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-4 mt-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 px-2 text-xs text-muted-foreground hover:text-primary-coral"
-                                      onClick={() => setReplyingTo(comment.id)}
-                                    >
-                                      <Reply className="w-3 h-3 mr-1" />
-                                      Reply
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {/* Replies will be displayed here once database migration is applied */}
                     </div>
                   </div>
                 </div>
