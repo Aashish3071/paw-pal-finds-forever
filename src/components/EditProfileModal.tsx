@@ -87,15 +87,15 @@ export const EditProfileModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-hidden flex flex-col p-6">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-center">
             Edit Profile
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 mt-4">
+          <div className="flex-1 overflow-y-auto space-y-6 pr-4">
             {/* Avatar Section */}
             <div className="flex flex-col items-center space-y-3">
               <div className="relative">
@@ -147,8 +147,8 @@ export const EditProfileModal = ({
             </div>
 
             {/* Name Field */}
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+            <div className="space-y-3">
+              <Label htmlFor="name" className="text-sm font-medium">Name</Label>
               <Input
                 ref={nameInputRef}
                 id="name"
@@ -157,6 +157,7 @@ export const EditProfileModal = ({
                 placeholder="Your name"
                 required
                 autoFocus={false}
+                className="w-full h-12 px-4 text-base rounded-lg border border-border focus:border-primary-coral focus:ring-2 focus:ring-primary-coral/20"
                 onFocus={(e) => {
                   // Prevent automatic text selection
                   setTimeout(() => {
@@ -170,20 +171,21 @@ export const EditProfileModal = ({
             </div>
 
             {/* Location Field */}
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
+            <div className="space-y-3">
+              <Label htmlFor="location" className="text-sm font-medium">Location</Label>
               <Input
                 id="location"
                 value={formData.location}
                 onChange={(e) => handleChange("location", e.target.value)}
                 placeholder="City, State/Country"
+                className="w-full h-12 px-4 text-base rounded-lg border border-border focus:border-primary-coral focus:ring-2 focus:ring-primary-coral/20"
               />
             </div>
 
             {/* Bio Field */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <Label htmlFor="bio">Bio</Label>
+                <Label htmlFor="bio" className="text-sm font-medium">Bio</Label>
                 <span className="text-xs text-muted-foreground">
                   {formData.bio.length}/200
                 </span>
@@ -197,14 +199,14 @@ export const EditProfileModal = ({
                   }
                 }}
                 placeholder="Tell us about yourself and your love for pets..."
-                className="min-h-[120px] resize-none"
+                className="w-full min-h-[120px] p-4 text-base rounded-lg border border-border focus:border-primary-coral focus:ring-2 focus:ring-primary-coral/20 resize-none"
                 maxLength={200}
               />
             </div>
           </div>
 
           {/* Action Buttons - Fixed at bottom */}
-          <div className="flex space-x-3 pt-4 bg-background border-t mt-4">
+          <div className="flex space-x-3 pt-6 mt-6 border-t border-border">
             <Button
               type="button"
               variant="outline"
