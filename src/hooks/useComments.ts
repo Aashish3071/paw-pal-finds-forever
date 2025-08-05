@@ -8,7 +8,13 @@ export interface Comment {
   user_id: string;
   content: string;
   created_at: string;
+  parent_id?: string;
+  reply_to_user_id?: string;
   user: {
+    name: string;
+    avatar_url?: string;
+  };
+  reply_to_user?: {
     name: string;
     avatar_url?: string;
   };
@@ -17,6 +23,8 @@ export interface Comment {
 export interface CreateCommentData {
   post_id: string;
   content: string;
+  parent_id?: string;
+  reply_to_user_id?: string;
 }
 
 export const useComments = (postId: string) => {
@@ -37,7 +45,8 @@ export const useComments = (postId: string) => {
         .select(
           `
           *,
-          user:users(name, avatar_url)
+          user:users(name, avatar_url),
+          reply_to_user:reply_to_user_id(name, avatar_url)
         `
         )
         .eq("post_id", postId)
@@ -63,6 +72,8 @@ export const useComments = (postId: string) => {
           post_id: data.post_id,
           user_id: user.id,
           content: data.content,
+          parent_id: data.parent_id || null,
+          reply_to_user_id: data.reply_to_user_id || null,
         })
         .select()
         .single();

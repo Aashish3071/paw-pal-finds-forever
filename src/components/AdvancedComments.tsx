@@ -52,12 +52,18 @@ interface CommentReaction {
 interface EnhancedComment {
   id: string;
   content: string;
+  user_id: string;
   user: {
+    name: string;
+    avatar_url?: string;
+  };
+  reply_to_user?: {
     name: string;
     avatar_url?: string;
   };
   created_at: string;
   parent_id?: string;
+  reply_to_user_id?: string;
   reactions: CommentReaction[];
   replies: EnhancedComment[];
   isPinned: boolean;
@@ -88,16 +94,43 @@ export function AdvancedComments({
   const { comments, isLoading, createComment, isCreating } =
     useComments(postId);
 
-  // Enhanced comments with real data structure (no mock data)
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffHours < 1) return "now";
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+    return `${Math.floor(diffDays / 7)}w`;
+  };
+
+  // Enhanced comments with real data structure and proper reply threading
   const enhancedComments: EnhancedComment[] = useMemo(() => {
-    return comments.map((comment) => ({
-      ...comment,
-      parent_id: undefined,
-      reactions: [],
-      replies: [],
-      isPinned: false,
-      replyCount: 0,
-    }));
+    // Separate top-level comments from replies
+    const topLevelComments = comments.filter(comment => !comment.parent_id);
+    const replies = comments.filter(comment => comment.parent_id);
+    
+    // Build the comment tree
+    return topLevelComments.map((comment) => {
+      const commentReplies = replies.filter(reply => reply.parent_id === comment.id);
+      
+      return {
+        ...comment,
+        reactions: [],
+        replies: commentReplies.map(reply => ({
+          ...reply,
+          reactions: [],
+          replies: [], // For now, we'll support only one level of nesting
+          isPinned: false,
+          replyCount: 0,
+        })),
+        isPinned: false,
+        replyCount: commentReplies.length,
+      };
+    });
   }, [comments]);
 
   const handleSubmitComment = () => {
@@ -109,9 +142,16 @@ export function AdvancedComments({
     setNewComment("");
   };
 
-  const handleSubmitReply = (parentId: string) => {
+  const handleSubmitReply = (parentId: string, replyToUserId: string) => {
     if (!replyText.trim()) return;
-    // In real app: createReply({ parent_id: parentId, content: replyText.trim() });
+    
+    createComment({
+      post_id: postId,
+      content: replyText.trim(),
+      parent_id: parentId,
+      reply_to_user_id: replyToUserId,
+    });
+    
     setReplyText("");
     setReplyingTo(null);
   };
@@ -158,19 +198,6 @@ export function AdvancedComments({
 
   // Use sorted comments directly since search is removed
   const filteredComments = sortedComments;
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffHours < 1) return "now";
-    if (diffHours < 24) return `${diffHours}h`;
-    if (diffDays < 7) return `${diffDays}d`;
-    return `${Math.floor(diffDays / 7)}w`;
-  };
 
   if (!isExpanded) return null;
 
@@ -388,12 +415,12 @@ export function AdvancedComments({
                               onKeyPress={(e) =>
                                 e.key === "Enter" &&
                                 !e.shiftKey &&
-                                handleSubmitReply(comment.id)
+                                handleSubmitReply(comment.id, comment.user_id)
                               }
                             />
                             <Button
                               size="sm"
-                              onClick={() => handleSubmitReply(comment.id)}
+                              onClick={() => handleSubmitReply(comment.id, comment.user_id)}
                               disabled={!replyText.trim()}
                               className="h-8 px-3"
                             >
@@ -408,6 +435,56 @@ export function AdvancedComments({
                               Cancel
                             </Button>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Replies */}
+                      {comment.replies && comment.replies.length > 0 && (
+                        <div className="mt-3 pl-4 border-l-2 border-border/20">
+                          {comment.replies.map((reply) => (
+                            <div key={reply.id} className="mb-3">
+                              <div className="flex gap-3">
+                                <Avatar className="w-8 h-8 flex-shrink-0">
+                                  <AvatarImage src={reply.user?.avatar_url} />
+                                  <AvatarFallback className="text-xs bg-muted text-foreground font-medium">
+                                    {reply.user?.name?.charAt(0) || "U"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-medium text-sm text-foreground">
+                                      {reply.user?.name || "Anonymous"}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {formatTimeAgo(reply.created_at)}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="text-sm text-foreground">
+                                    {reply.reply_to_user && (
+                                      <span className="text-primary-coral font-medium">
+                                        @{reply.reply_to_user.name}{" "}
+                                      </span>
+                                    )}
+                                    {reply.content}
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-4 mt-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-xs text-muted-foreground hover:text-primary-coral"
+                                      onClick={() => setReplyingTo(comment.id)}
+                                    >
+                                      <Reply className="w-3 h-3 mr-1" />
+                                      Reply
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
