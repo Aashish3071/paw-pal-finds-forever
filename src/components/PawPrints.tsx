@@ -9,6 +9,7 @@ import {
   UserMinus,
   Repeat2,
   Bookmark,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,7 +26,11 @@ import { usePosts, Post } from "@/hooks/usePosts";
 import { useFollows } from "@/hooks/useFollows";
 import { useToast } from "@/hooks/use-toast";
 
-export function PawPrints() {
+interface PawPrintsProps {
+  onNavigateToMessages?: () => void;
+}
+
+export function PawPrints({ onNavigateToMessages }: PawPrintsProps = {}) {
   const [showPostModal, setShowPostModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [bookmarkedPosts, setBookmarkedPosts] = useState<Set<string>>(
@@ -166,14 +171,20 @@ export function PawPrints() {
               />
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-coral to-pet-orange bg-clip-text text-transparent">
-                  PawPrints
+                  Community
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Community stories & moments
+                  Share stories & discover moments
                 </p>
               </div>
             </div>
-            <div className="text-2xl">🐾</div>
+            <div className="flex items-center gap-2">
+              <MessageSquare
+                className="w-6 h-6 text-primary-coral cursor-pointer hover:text-primary-coral/80 transition-colors"
+                onClick={onNavigateToMessages}
+              />
+              <div className="text-2xl">🐾</div>
+            </div>
           </div>
         </div>
       </div>

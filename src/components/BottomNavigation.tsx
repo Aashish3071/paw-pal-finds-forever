@@ -1,23 +1,19 @@
-import { Home, MessageCircle, User, Heart } from "lucide-react";
+import { Home, User, Heart, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useNotifications } from "@/hooks/useNotifications";
 
 interface BottomNavigationProps {
-  activeTab: "home" | "pawprints" | "messages" | "profile";
-  onTabChange: (tab: "home" | "pawprints" | "messages" | "profile") => void;
+  activeTab: "community" | "pets" | "caretaker" | "profile";
+  onTabChange: (tab: "community" | "pets" | "caretaker" | "profile") => void;
 }
 
 export function BottomNavigation({
   activeTab,
   onTabChange,
 }: BottomNavigationProps) {
-  const { unreadCount } = useNotifications();
-
   const tabs = [
-    { id: "home" as const, icon: Home, label: "Home" },
-    { id: "pawprints" as const, icon: Heart, label: "PawPrints" },
-    { id: "messages" as const, icon: MessageCircle, label: "Messages" },
+    { id: "pets" as const, icon: Home, label: "Pets" },
+    { id: "community" as const, icon: Heart, label: "Community" },
+    { id: "caretaker" as const, icon: UserCheck, label: "Caretaker" },
     { id: "profile" as const, icon: User, label: "Profile" },
   ];
 
@@ -44,18 +40,13 @@ export function BottomNavigation({
                 <Icon
                   className={`w-5 h-5 ${isActive ? "animate-pulse" : ""}`}
                 />
-                {tab.id === "messages" && unreadCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1.5 py-0.5 min-w-[18px] h-4 rounded-full">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </Badge>
-                )}
               </div>
               <span
                 className={`text-xs font-medium ${
                   isActive ? "opacity-100" : "opacity-70"
                 }`}
               >
-                {tab.id === "pawprints" ? "🐾" : tab.label}
+                {tab.label}
               </span>
             </Button>
           );

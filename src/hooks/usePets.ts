@@ -143,6 +143,30 @@ export const usePets = () => {
   };
 };
 
+// Hook to get user's own pets
+export const useMyPets = () => {
+  return useQuery({
+    queryKey: ["my-pets"],
+    queryFn: async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from("pets")
+        .select("*")
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as Pet[];
+    },
+    staleTime: 30000,
+    retry: 1,
+  });
+};
+
 export const useSavedPets = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();

@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Settings, Heart, MessageCircle, Share, Edit } from "lucide-react";
+import {
+  Settings,
+  Heart,
+  MessageCircle,
+  Share,
+  Edit,
+  MessageSquare,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,7 +15,11 @@ import { useProfile } from "@/hooks/useProfile";
 import { EditProfileModal } from "./EditProfileModal";
 import { SettingsModal } from "./SettingsModal";
 
-export function Profile() {
+interface ProfileProps {
+  onNavigateToMessages?: () => void;
+}
+
+export function Profile({ onNavigateToMessages }: ProfileProps = {}) {
   const { profile, userStats, userPosts, isLoading } = useProfile();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -27,13 +38,19 @@ export function Profile() {
               />
               <h1 className="text-xl font-bold text-foreground">Profile</h1>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowSettingsModal(true)}
-            >
-              <Settings className="w-5 h-5" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <MessageSquare
+                className="w-6 h-6 text-primary-coral cursor-pointer hover:text-primary-coral/80 transition-colors"
+                onClick={onNavigateToMessages}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowSettingsModal(true)}
+              >
+                <Settings className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>

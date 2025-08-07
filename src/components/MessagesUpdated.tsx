@@ -11,7 +11,11 @@ import {
 } from "@/hooks/useConversations";
 import { ChatInterface } from "./ChatInterface";
 
-export function MessagesUpdated() {
+interface MessagesUpdatedProps {
+  onBack?: () => void;
+}
+
+export function MessagesUpdated({ onBack }: MessagesUpdatedProps = {}) {
   const { conversations, isLoading } = useConversations();
   const [selectedConversation, setSelectedConversation] =
     useState<ConversationWithPet | null>(null);
@@ -52,6 +56,16 @@ export function MessagesUpdated() {
         <div className="max-w-md mx-auto p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
+              {onBack && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onBack}
+                  className="mr-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+              )}
               <img
                 src="/pet_logo_1.png"
                 alt="PawPal Logo"

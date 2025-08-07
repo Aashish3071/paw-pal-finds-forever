@@ -8,6 +8,7 @@ import { PetFeed } from "@/components/PetFeed";
 import { MessagesUpdated } from "@/components/MessagesUpdated";
 import { Profile } from "@/components/Profile";
 import { PetListingForm } from "@/components/PetListingForm";
+import { Caretaker } from "@/components/Caretaker";
 
 const LoadingMessages = [
   "Finding perfect pet matches...",
@@ -20,9 +21,10 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    "home" | "pawprints" | "messages" | "profile"
-  >("pawprints");
+    "community" | "pets" | "caretaker" | "profile"
+  >("pets");
   const [showListingForm, setShowListingForm] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
   const [currentMessage, setCurrentMessage] = useState(0);
 
   useEffect(() => {
@@ -114,25 +116,29 @@ const Index = () => {
     return <PetListingForm onBack={() => setShowListingForm(false)} />;
   }
 
+  // Show messages if needed
+  if (showMessages) {
+    return <MessagesUpdated onBack={() => setShowMessages(false)} />;
+  }
+
   // Render main app tabs
   const renderActiveTab = () => {
     switch (activeTab) {
-      case "home":
+      case "community":
+        return <PawPrints onNavigateToMessages={() => setShowMessages(true)} />;
+      case "pets":
         return (
           <PetFeed
-            userRole="adopt"
             onCreateListing={() => setShowListingForm(true)}
-            onNavigateToMessages={() => setActiveTab("messages")}
+            onNavigateToMessages={() => setShowMessages(true)}
           />
         );
-      case "pawprints":
-        return <PawPrints />;
-      case "messages":
-        return <MessagesUpdated />;
+      case "caretaker":
+        return <Caretaker onNavigateToMessages={() => setShowMessages(true)} />;
       case "profile":
-        return <Profile />;
+        return <Profile onNavigateToMessages={() => setShowMessages(true)} />;
       default:
-        return <PawPrints />;
+        return <PawPrints onNavigateToMessages={() => setShowMessages(true)} />;
     }
   };
 

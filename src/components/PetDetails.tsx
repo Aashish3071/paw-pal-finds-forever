@@ -1,22 +1,8 @@
 import { useState } from "react";
-import {
-  ArrowLeft,
-  MessageCircle,
-  Heart,
-  MapPin,
-  Calendar,
-  Info,
-} from "lucide-react";
+import { ArrowLeft, MessageCircle, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Pet } from "@/hooks/usePets";
 import { useSavedPets } from "@/hooks/usePets";
 
@@ -53,16 +39,55 @@ export function PetDetails({
     }`;
   };
 
-  const formatPostedDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const getPetSize = (type: string, breed: string) => {
+    // Simple logic to determine size based on breed
+    const largeDogBreeds = [
+      "golden retriever",
+      "labrador",
+      "german shepherd",
+      "rottweiler",
+      "great dane",
+    ];
+    const smallDogBreeds = [
+      "chihuahua",
+      "pomeranian",
+      "yorkshire terrier",
+      "maltese",
+      "pug",
+    ];
 
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return `${Math.floor(diffDays / 7)} weeks ago`;
+    if (type.toLowerCase() === "dog") {
+      if (largeDogBreeds.some((b) => breed.toLowerCase().includes(b)))
+        return "Large";
+      if (smallDogBreeds.some((b) => breed.toLowerCase().includes(b)))
+        return "Small";
+      return "Medium";
+    }
+    if (type.toLowerCase() === "cat") return "Medium";
+    return "Small";
+  };
+
+  const getPetTraits = (type: string, breed: string) => {
+    // Simple logic to assign traits based on breed
+    if (breed.toLowerCase().includes("golden retriever")) {
+      return "Friendly, Energetic, Playful";
+    }
+    if (breed.toLowerCase().includes("labrador")) {
+      return "Loyal, Active, Intelligent";
+    }
+    if (breed.toLowerCase().includes("persian")) {
+      return "Calm, Gentle, Affectionate";
+    }
+    // Default traits
+    return "Friendly, Energetic, Playful";
+  };
+
+  const getIdealHome = (type: string, breed: string) => {
+    const largeDogBreeds = ["golden retriever", "labrador", "german shepherd"];
+    if (largeDogBreeds.some((b) => breed.toLowerCase().includes(b))) {
+      return "Active household with a yard";
+    }
+    return "Loving family home";
   };
 
   const handleChatClick = () => {
@@ -72,38 +97,22 @@ export function PetDetails({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md h-[90vh] p-0 overflow-hidden">
-        <div className="flex flex-col h-full">
+      <DialogContent className="max-w-md h-[100vh] p-0 overflow-hidden rounded-none border-0">
+        <div className="flex flex-col h-full bg-white">
           {/* Header */}
-          <DialogHeader className="p-4 pb-2 bg-background border-b">
-            <div className="flex items-center justify-between">
-              <Button variant="ghost" size="icon" onClick={onClose}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <DialogTitle className="text-lg font-semibold">
-                Pet Details
-              </DialogTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => toggleSavedPet(pet.id)}
-              >
-                <Heart
-                  className={`w-5 h-5 ${
-                    isSaved
-                      ? "fill-red-500 text-red-500"
-                      : "text-muted-foreground"
-                  }`}
-                />
-              </Button>
-            </div>
-          </DialogHeader>
+          <div className="flex items-center justify-between p-4 bg-white border-b border-gray-100">
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <ArrowLeft className="w-6 h-6" />
+            </Button>
+            <h1 className="text-lg font-semibold">PawPal</h1>
+            <div className="w-10" /> {/* Spacer for centering */}
+          </div>
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto">
-            {/* Image Gallery */}
-            <div className="relative">
-              <div className="aspect-square bg-muted">
+            {/* Pet Image */}
+            <div className="relative bg-gradient-to-b from-orange-50 to-orange-100">
+              <div className="aspect-[4/3] flex items-center justify-center">
                 {pet.image_urls && pet.image_urls.length > 0 ? (
                   <img
                     src={pet.image_urls[currentImageIndex]}
@@ -111,7 +120,7 @@ export function PetDetails({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-muted">
+                  <div className="w-32 h-32 bg-orange-200 rounded-full flex items-center justify-center">
                     <span className="text-4xl">🐾</span>
                   </div>
                 )}
@@ -134,76 +143,100 @@ export function PetDetails({
             </div>
 
             {/* Pet Info */}
-            <div className="p-4 space-y-4">
-              {/* Basic Info */}
+            <div className="p-6 space-y-6">
+              {/* Pet Name */}
               <div>
-                <h3 className="text-2xl font-bold text-foreground mb-2">
-                  {pet.name}
-                </h3>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge variant="secondary">{pet.type}</Badge>
-                  <Badge variant="outline">{pet.breed}</Badge>
-                  <Badge variant="outline">{pet.gender}</Badge>
-                  <Badge variant="outline">{formatAge(pet.age)}</Badge>
-                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                  About {pet.name}
+                </h2>
+              </div>
 
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    <span>{pet.location}</span>
+              {/* Basic Details */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                  <span className="text-gray-500 font-medium">Breed</span>
+                  <span className="text-gray-900 font-semibold">
+                    {pet.breed}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                  <span className="text-gray-500 font-medium">Age</span>
+                  <span className="text-gray-900 font-semibold">
+                    {formatAge(pet.age)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-3 border-b border-gray-100">
+                  <span className="text-gray-500 font-medium">Size</span>
+                  <span className="text-gray-900 font-semibold">
+                    {getPetSize(pet.type, pet.breed)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Biography */}
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                  Biography
+                </h3>
+                <p className="text-gray-600 leading-relaxed">
+                  {pet.description ||
+                    `${pet.name} is a friendly and energetic ${pet.breed} looking for a loving home. He loves playing fetch, going for walks, and cuddling with his humans. ${pet.name} is well-trained and gets along well with children and other dogs. He would thrive in an active household with a yard to play in.`}
+                </p>
+              </div>
+
+              {/* Personality */}
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                  Personality
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">Traits</span>
+                    <span className="text-gray-900 font-semibold">
+                      {getPetTraits(pet.type, pet.breed)}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    <span>Posted {formatPostedDate(pet.created_at)}</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 font-medium">
+                      Ideal Home
+                    </span>
+                    <span className="text-gray-900 font-semibold text-right">
+                      {getIdealHome(pet.type, pet.breed)}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Owner Info */}
-              <Card className="border-border/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={pet.owner?.avatar_url} />
-                      <AvatarFallback>
-                        {pet.owner?.name?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {pet.owner?.name || "Pet Owner"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Pet Owner</p>
-                    </div>
+              {/* Contact */}
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                  Contact
+                </h3>
+                <div className="flex items-center gap-3 mb-6">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={pet.owner?.avatar_url} />
+                    <AvatarFallback>
+                      {pet.owner?.name?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {pet.owner?.name || "Pet Owner"}
+                    </p>
+                    <p className="text-sm text-gray-500">Owner</p>
                   </div>
+                </div>
+              </div>
 
-                  <Button
-                    onClick={handleChatClick}
-                    className="w-full bg-primary-coral hover:bg-primary-coral/90"
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Start Chat
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Description */}
-              <Card className="border-border/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Info className="w-4 h-4 text-primary-coral" />
-                    <h4 className="font-medium text-foreground">
-                      About {pet.name}
-                    </h4>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {pet.description || "No description provided."}
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Additional spacing for bottom navigation */}
-              <div className="h-4" />
+              {/* Adopt Button */}
+              <div className="pt-4 pb-8">
+                <Button
+                  onClick={handleChatClick}
+                  className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl text-lg"
+                >
+                  Adopt Me
+                </Button>
+              </div>
             </div>
           </div>
         </div>

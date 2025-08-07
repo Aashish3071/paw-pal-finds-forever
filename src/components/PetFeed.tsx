@@ -1,28 +1,37 @@
 import { useState } from "react";
-import { Search, Filter, MapPin, Plus } from "lucide-react";
+import { Search, Filter, MapPin, Plus, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PetCard } from "./PetCard";
 import { PetDetails } from "./PetDetails";
-import { usePets, useSavedPets, Pet } from "@/hooks/usePets";
+import { usePets, useSavedPets, useMyPets, Pet } from "@/hooks/usePets";
 import { useConversations } from "@/hooks/useConversations";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface PetFeedProps {
-  userRole: "adopt" | "rehome";
   onCreateListing?: () => void;
   onNavigateToMessages?: (conversationId?: string) => void;
 }
 
 export function PetFeed({
-  userRole,
   onCreateListing,
   onNavigateToMessages,
 }: PetFeedProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
-  const { pets, isLoading } = usePets();
+
+  // Get user role to determine what to show
+  const { userRole, isLoading: isLoadingRole } = useUserRole();
+
+  // Get pets based on user role
+  const { pets: allPets, isLoading: isLoadingAllPets } = usePets();
+  const { data: myPets = [], isLoading: isLoadingMyPets } = useMyPets();
   const { savedPets, toggleSavedPet } = useSavedPets();
   const { createConversation } = useConversations();
+
+  // Determine which pets to show based on user role
+  const pets = userRole === "owner" ? myPets : allPets;
+  const isLoading = userRole === "owner" ? isLoadingMyPets : isLoadingAllPets;
 
   const handleWishlist = (petId: string) => {
     toggleSavedPet(petId);
@@ -143,24 +152,34 @@ export function PetFeed({
               />
               <div>
                 <h1 className="text-xl font-bold text-foreground">
-                  Find Your Pet Pal
+                  {userRole === "owner" ? "My Pets" : "Find Your Pet Pal"}
                 </h1>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <MapPin className="w-4 h-4" />
-                  <span>Near Mumbai</span>
+                  <span>
+                    {userRole === "owner"
+                      ? "Manage your listings"
+                      : "Near Mumbai"}
+                  </span>
                 </div>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                // TODO: Implement filter functionality
-                console.log("Filter clicked");
-              }}
-            >
-              <Filter className="w-5 h-5" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <MessageSquare
+                className="w-6 h-6 text-primary-coral cursor-pointer hover:text-primary-coral/80 transition-colors"
+                onClick={onNavigateToMessages}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  // TODO: Implement filter functionality
+                  console.log("Filter clicked");
+                }}
+              >
+                <Filter className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
 
           <div className="relative">
@@ -222,19 +241,25 @@ export function PetFeed({
           <div className="text-center py-12">
             <div className="text-6xl mb-4">{searchQuery ? "🔍" : "🐾"}</div>
             <h3 className="text-lg font-medium text-foreground mb-2">
-              {searchQuery ? "No pets found" : "No pets available yet"}
+              {searchQuery
+                ? "No pets found"
+                : userRole === "owner"
+                ? "No pets listed yet"
+                : "No pets available yet"}
             </h3>
             <p className="text-muted-foreground mb-4">
               {searchQuery
                 ? "Try searching for dogs, cats, birds, rabbits, or other pets"
-                : "Be the first to list a pet for adoption!"}
+                : userRole === "owner"
+                ? "Create your first pet listing to find them a new home"
+                : "Check back soon for new pet listings!"}
             </p>
             {!searchQuery && onCreateListing && (
               <Button
                 onClick={onCreateListing}
                 className="bg-gradient-to-r from-primary-coral to-pet-orange text-white"
               >
-                List Your Pet
+                {userRole === "owner" ? "List Your Pet" : "List a Pet"}
               </Button>
             )}
           </div>
