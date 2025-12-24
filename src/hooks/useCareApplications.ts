@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "./use-toast";
+import { z } from "zod";
+
+// Input validation schema
+const applicationSchema = z.object({
+  request_id: z.string().uuid("Invalid request ID"),
+  message: z.string().min(10, "Please provide more details (min 10 characters)").max(2000, "Message is too long (max 2000 characters)"),
+  proposed_rate: z.number().nonnegative("Rate must be positive").optional(),
+});
 
 export interface CareApplication {
   id: string;
@@ -113,6 +121,9 @@ export const useCareApplications = () => {
   // Create a new care application
   const createApplicationMutation = useMutation({
     mutationFn: async (applicationData: CreateCareApplicationData) => {
+      // Validate input
+      const validated = applicationSchema.parse(applicationData);
+      
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -121,7 +132,9 @@ export const useCareApplications = () => {
       const { data, error } = await supabase
         .from("care_applications")
         .insert({
-          ...applicationData,
+          request_id: validated.request_id,
+          message: validated.message,
+          proposed_rate: validated.proposed_rate,
           applicant_id: user.id,
         })
         .select()

@@ -1,6 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "./use-toast";
+import { z } from "zod";
+
+// Input validation schema
+const careRequestSchema = z.object({
+  pet_id: z.string().uuid("Invalid pet ID"),
+  title: z.string().min(5, "Title is too short (min 5 characters)").max(200, "Title is too long (max 200 characters)"),
+  description: z.string().max(2000, "Description is too long (max 2000 characters)").optional(),
+  location: z.string().min(1, "Location is required").max(100, "Location is too long (max 100 characters)"),
+  start_date: z.string(),
+  end_date: z.string(),
+  compensation: z.number().nonnegative("Compensation must be positive").optional(),
+  compensation_type: z.string().optional(),
+  instructions: z.string().max(1000, "Instructions are too long (max 1000 characters)").optional(),
+});
 
 export interface CareRequest {
   id: string;
@@ -100,6 +114,9 @@ export const useCareRequests = () => {
   // Create a new care request
   const createCareRequestMutation = useMutation({
     mutationFn: async (requestData: CreateCareRequestData) => {
+      // Validate input
+      const validated = careRequestSchema.parse(requestData);
+      
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -108,7 +125,15 @@ export const useCareRequests = () => {
       const { data, error } = await supabase
         .from("care_requests")
         .insert({
-          ...requestData,
+          pet_id: validated.pet_id,
+          title: validated.title,
+          description: validated.description,
+          location: validated.location,
+          start_date: validated.start_date,
+          end_date: validated.end_date,
+          compensation: validated.compensation,
+          compensation_type: validated.compensation_type,
+          instructions: validated.instructions,
           owner_id: user.id,
         })
         .select()

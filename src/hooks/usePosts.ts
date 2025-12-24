@@ -1,6 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "./use-toast";
+import { z } from "zod";
+
+// Input validation schemas
+const postSchema = z.object({
+  content: z.string().min(1, "Post content is required").max(5000, "Post is too long (max 5000 characters)"),
+  image_urls: z.array(z.string().url()).max(4, "Maximum 4 images allowed").optional(),
+  petType: z.string().optional(),
+});
+
+const repostSchema = z.object({
+  original_post_id: z.string().uuid("Invalid post ID"),
+  repost_comment: z.string().max(5000, "Comment is too long").optional(),
+});
 
 export interface Post {
   id: string;
@@ -83,6 +96,9 @@ export const usePosts = () => {
 
   const createPostMutation = useMutation({
     mutationFn: async (postData: CreatePostData) => {
+      // Validate input
+      const validated = postSchema.parse(postData);
+      
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -91,8 +107,8 @@ export const usePosts = () => {
       const { data, error } = await supabase
         .from("posts")
         .insert({
-          content: postData.content,
-          image_urls: postData.image_urls || [],
+          content: validated.content,
+          image_urls: validated.image_urls || [],
           user_id: user.id,
         })
         .select()
@@ -168,14 +184,17 @@ export const usePosts = () => {
   // Repost mutation
   const createRepostMutation = useMutation({
     mutationFn: async (data: CreateRepostData) => {
+      // Validate input
+      const validated = repostSchema.parse(data);
+      
       const user = await supabase.auth.getUser();
       if (!user.data.user) throw new Error("Not authenticated");
 
       // Create the repost entry
       const { error: repostError } = await supabase.from("reposts").insert({
         user_id: user.data.user.id,
-        original_post_id: data.original_post_id,
-        repost_comment: data.repost_comment,
+        original_post_id: validated.original_post_id,
+        repost_comment: validated.repost_comment,
       });
 
       if (repostError) throw repostError;
