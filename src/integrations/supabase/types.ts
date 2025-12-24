@@ -631,7 +631,7 @@ export type Database = {
     Functions: {
       approve_care_application: {
         Args: { application_id: string }
-        Returns: undefined
+        Returns: boolean
       }
       get_care_requests_with_details: {
         Args: never
