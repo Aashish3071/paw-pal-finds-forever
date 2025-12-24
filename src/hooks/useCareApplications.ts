@@ -97,7 +97,7 @@ export const useCareApplications = () => {
             compensation_type,
             status,
             pet:pets(name, type, image_urls),
-            owner:users(name, avatar_url)
+            owner:users!care_requests_owner_id_fkey(name, avatar_url)
           )
         `
         )
@@ -105,7 +105,7 @@ export const useCareApplications = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return (data || []) as CareApplication[];
+      return (data || []) as unknown as CareApplication[];
     },
     staleTime: 30000,
   });

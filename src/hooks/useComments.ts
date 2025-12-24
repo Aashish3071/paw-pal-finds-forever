@@ -48,15 +48,15 @@ export const useComments = (postId: string) => {
         .select(
           `
           *,
-          user:users(name, avatar_url),
-          reply_to_user:reply_to_user_id(name, avatar_url)
+          user:users!comments_user_id_fkey(name, avatar_url),
+          reply_to_user:users!comments_reply_to_user_id_fkey(name, avatar_url)
         `
         )
         .eq("post_id", postId)
         .order("thread_path", { ascending: true });
 
       if (error) throw error;
-      return (data || []) as Comment[];
+      return (data || []) as unknown as Comment[];
     },
     enabled: !!postId,
     staleTime: 30000,
