@@ -167,7 +167,7 @@ export function PetFeed({
             <div className="flex items-center gap-2">
               <MessageSquare
                 className="w-6 h-6 text-primary-coral cursor-pointer hover:text-primary-coral/80 transition-colors"
-                onClick={onNavigateToMessages}
+                onClick={() => onNavigateToMessages?.()}
               />
               <Button
                 variant="ghost"
