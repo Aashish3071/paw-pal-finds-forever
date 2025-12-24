@@ -1,6 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "./use-toast";
+import { z } from "zod";
+
+// Input validation schemas
+const createConversationSchema = z.object({
+  pet_id: z.string().uuid("Invalid pet ID"),
+  owner_id: z.string().uuid("Invalid owner ID"),
+  initial_message: z.string().max(5000, "Message is too long (max 5000 characters)").optional(),
+});
+
+const sendMessageSchema = z.object({
+  conversation_id: z.string().uuid("Invalid conversation ID"),
+  content: z.string().min(1, "Message cannot be empty").max(5000, "Message is too long (max 5000 characters)"),
+  message_type: z.string().optional(),
+  template_id: z.string().optional(),
+});
 
 export interface ConversationWithPet {
   id: string;
@@ -123,6 +138,9 @@ export const useConversations = () => {
 
   const createConversationMutation = useMutation({
     mutationFn: async (data: CreateConversationData) => {
+      // Validate input
+      const validated = createConversationSchema.parse(data);
+      
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -132,7 +150,7 @@ export const useConversations = () => {
       const { data: existingConv } = await supabase
         .from("conversations")
         .select("id")
-        .eq("pet_id", data.pet_id)
+        .eq("pet_id", validated.pet_id)
         .eq("adopter_id", user.id)
         .single();
 
@@ -144,9 +162,9 @@ export const useConversations = () => {
       const { data: newConv, error } = await supabase
         .from("conversations")
         .insert({
-          pet_id: data.pet_id,
+          pet_id: validated.pet_id,
           adopter_id: user.id,
-          owner_id: data.owner_id,
+          owner_id: validated.owner_id,
         })
         .select()
         .single();
@@ -154,11 +172,11 @@ export const useConversations = () => {
       if (error) throw error;
 
       // Send initial message if provided
-      if (data.initial_message) {
+      if (validated.initial_message) {
         await supabase.from("messages").insert({
           conversation_id: newConv.id,
           sender_id: user.id,
-          content: data.initial_message,
+          content: validated.initial_message,
         });
       }
 
@@ -222,6 +240,9 @@ export const useMessages = (conversationId: string) => {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (data: SendMessageData) => {
+      // Validate input
+      const validated = sendMessageSchema.parse(data);
+      
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -230,11 +251,11 @@ export const useMessages = (conversationId: string) => {
       const { data: message, error } = await supabase
         .from("messages")
         .insert({
-          conversation_id: data.conversation_id,
+          conversation_id: validated.conversation_id,
           sender_id: user.id,
-          content: data.content,
-          message_type: data.message_type || "text",
-          template_id: data.template_id,
+          content: validated.content,
+          message_type: validated.message_type || "text",
+          template_id: validated.template_id,
         })
         .select()
         .single();

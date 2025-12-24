@@ -1,6 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "./use-toast";
+import { z } from "zod";
+
+// Input validation schema for profile updates
+const profileUpdateSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100, "Name is too long (max 100 characters)").optional(),
+  bio: z.string().max(500, "Bio is too long (max 500 characters)").optional(),
+  location: z.string().max(100, "Location is too long (max 100 characters)").optional(),
+  avatar_url: z.string().url("Invalid avatar URL").optional().nullable(),
+});
 
 export interface UserProfile {
   id: string;
@@ -135,6 +144,9 @@ export const useProfile = () => {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (updates: Partial<UserProfile>) => {
+      // Validate input
+      const validated = profileUpdateSchema.parse(updates);
+      
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -142,7 +154,7 @@ export const useProfile = () => {
 
       const { data, error } = await supabase
         .from("users")
-        .update(updates)
+        .update(validated)
         .eq("id", user.id)
         .select()
         .single();
