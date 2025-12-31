@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Upload, Image as ImageIcon, Video, Camera } from "lucide-react";
+import { X, Upload, Image as ImageIcon, Video, Camera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { uploadFile } from "@/lib/storage";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PawPostModalProps {
   open: boolean;
@@ -35,6 +37,7 @@ export function PawPostModal({ open, onClose, onPost }: PawPostModalProps) {
   const [media, setMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,7 +75,7 @@ export function PawPostModal({ open, onClose, onPost }: PawPostModalProps) {
     setMediaType(null);
   };
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (!content.trim()) {
       toast({
         title: "Content required",
@@ -91,26 +94,65 @@ export function PawPostModal({ open, onClose, onPost }: PawPostModalProps) {
       return;
     }
 
-    onPost({
-      content: content.trim(),
-      petType,
-      image: mediaType === "image" ? mediaPreview || undefined : undefined,
-      video: mediaType === "video" ? mediaPreview || undefined : undefined,
-    });
+    try {
+      setIsUploading(true);
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to post.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    // Reset form
-    setContent("");
-    setPetType("");
-    setMedia(null);
-    setMediaPreview(null);
-    setMediaType(null);
+      let uploadedImageUrl: string | undefined;
+      
+      // Upload media if it's an image
+      if (media && mediaType === "image") {
+        try {
+          uploadedImageUrl = await uploadFile("post-images", media, user.id);
+        } catch (uploadError: any) {
+          toast({
+            title: "Upload Error",
+            description: uploadError.message || "Failed to upload image.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
 
-    toast({
-      title: "Paw posted! 🐾",
-      description: "Your moment has been shared with the community.",
-    });
+      onPost({
+        content: content.trim(),
+        petType,
+        image: uploadedImageUrl,
+        video: undefined, // Video upload not supported yet
+      });
 
-    onClose();
+      // Reset form
+      setContent("");
+      setPetType("");
+      setMedia(null);
+      setMediaPreview(null);
+      setMediaType(null);
+
+      toast({
+        title: "Paw posted! 🐾",
+        description: "Your moment has been shared with the community.",
+      });
+
+      onClose();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create post.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -219,11 +261,18 @@ export function PawPostModal({ open, onClose, onPost }: PawPostModalProps) {
 
         {/* Action Buttons */}
         <div className="flex gap-3 pt-4 border-t border-border/20">
-          <Button variant="outline" className="flex-1" onClick={onClose}>
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={isUploading}>
             Cancel
           </Button>
-          <Button variant="hero" className="flex-1" onClick={handlePost}>
-            Post Paw 🐾
+          <Button variant="hero" className="flex-1" onClick={handlePost} disabled={isUploading}>
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              "Post Paw 🐾"
+            )}
           </Button>
         </div>
       </DialogContent>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Upload, MapPin, Heart } from "lucide-react";
+import { ArrowLeft, Upload, MapPin, Heart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { usePets } from "@/hooks/usePets";
+import { uploadMultipleFiles } from "@/lib/storage";
+import { supabase } from "@/integrations/supabase/client";
 
 const petSchema = z.object({
   name: z.string().min(1, "Pet name is required"),
@@ -55,6 +57,7 @@ interface PetListingFormProps {
 
 export const PetListingForm = ({ onBack }: PetListingFormProps) => {
   const [photos, setPhotos] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const { createPet, isCreating } = usePets();
 
@@ -88,25 +91,60 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const onSubmit = (data: PetFormData) => {
-    console.log("Pet listing data:", data);
-    console.log("Photos:", photos);
+  const onSubmit = async (data: PetFormData) => {
+    try {
+      setIsUploading(true);
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to create a listing.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    // Convert form data to match database schema
-    const petData = {
-      name: data.name,
-      type: data.type,
-      breed: data.breed,
-      gender: data.gender,
-      age: data.age,
-      description: `${data.temperament}\n\nReason for rehoming: ${data.reason}`,
-      location: data.location,
-      image_urls: photos.length > 0 ? [URL.createObjectURL(photos[0])] : [], // Use the first photo as a placeholder
-    };
+      // Upload photos to storage
+      let imageUrls: string[] = [];
+      if (photos.length > 0) {
+        try {
+          imageUrls = await uploadMultipleFiles("pet-images", photos, user.id);
+        } catch (uploadError: any) {
+          toast({
+            title: "Upload Error",
+            description: uploadError.message || "Failed to upload images.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
 
-    // Create the pet using the hook
-    createPet(petData);
-    onBack();
+      // Convert form data to match database schema
+      const petData = {
+        name: data.name,
+        type: data.type,
+        breed: data.breed,
+        gender: data.gender,
+        age: data.age,
+        description: `${data.temperament}\n\nReason for rehoming: ${data.reason}`,
+        location: data.location,
+        image_urls: imageUrls,
+      };
+
+      // Create the pet using the hook
+      createPet(petData);
+      onBack();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create listing.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -400,9 +438,18 @@ export const PetListingForm = ({ onBack }: PetListingFormProps) => {
                   type="submit"
                   className="w-full bg-gradient-to-r from-primary-coral to-pet-orange text-white hover:shadow-lg hover:scale-105 transition-all duration-300"
                   size="lg"
-                  disabled={isCreating}
+                  disabled={isCreating || isUploading}
                 >
-                  {isCreating ? "Creating Listing..." : "Create Listing"}
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading Images...
+                    </>
+                  ) : isCreating ? (
+                    "Creating Listing..."
+                  ) : (
+                    "Create Listing"
+                  )}
                 </Button>
               </form>
             </Form>
