@@ -120,13 +120,10 @@ export function Caretaker({ onNavigateToMessages }: CaretakerProps) {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <MessageSquare
-                className="w-6 h-6 text-primary-coral cursor-pointer hover:text-primary-coral/80 transition-colors"
-                onClick={onNavigateToMessages}
-              />
-              <div className="text-2xl">🐕‍🦺</div>
-            </div>
+            <MessageSquare
+              className="w-6 h-6 text-primary-coral cursor-pointer hover:text-primary-coral/80 transition-colors"
+              onClick={onNavigateToMessages}
+            />
           </div>
 
           {/* Tabs Navigation */}
