@@ -11,7 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useProfile } from "@/hooks/useProfile";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera } from "lucide-react";
+import { Camera, Loader2 } from "lucide-react";
+import { uploadFile } from "@/lib/storage";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -23,6 +26,7 @@ export const EditProfileModal = ({
   onClose,
 }: EditProfileModalProps) => {
   const { profile, updateProfile, isUpdating } = useProfile();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     bio: "",
@@ -31,6 +35,7 @@ export const EditProfileModal = ({
   });
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -44,10 +49,51 @@ export const EditProfileModal = ({
     }
   }, [profile]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile(formData);
-    onClose();
+    
+    try {
+      let finalAvatarUrl = formData.avatar_url;
+      
+      // If there's a selected image, upload it first
+      if (selectedImage) {
+        setIsUploading(true);
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast({
+            title: "Error",
+            description: "You must be logged in to update your profile.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        try {
+          finalAvatarUrl = await uploadFile("avatars", selectedImage, user.id);
+        } catch (uploadError: any) {
+          toast({
+            title: "Upload Error",
+            description: uploadError.message || "Failed to upload avatar.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
+      updateProfile({ ...formData, avatar_url: finalAvatarUrl });
+      setSelectedImage(null);
+      setImagePreview(null);
+      onClose();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update profile.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -217,10 +263,19 @@ export const EditProfileModal = ({
             </Button>
             <Button
               type="submit"
-              disabled={isUpdating}
+              disabled={isUpdating || isUploading}
               className="flex-1 bg-gradient-to-r from-primary-coral to-pet-orange text-white"
             >
-              {isUpdating ? "Saving..." : "Save Changes"}
+              {isUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : isUpdating ? (
+                "Saving..."
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </div>
         </form>
