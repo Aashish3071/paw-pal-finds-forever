@@ -1,57 +1,69 @@
-import { Home, User, Heart, UserCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search, MessageCircle, User } from "lucide-react";
+
+export type TabType = "pets" | "post" | "messages" | "profile";
 
 interface BottomNavigationProps {
-  activeTab: "community" | "pets" | "caretaker" | "profile";
-  onTabChange: (tab: "community" | "pets" | "caretaker" | "profile") => void;
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
+  unreadCount?: number;
 }
 
 export function BottomNavigation({
   activeTab,
   onTabChange,
+  unreadCount = 0,
 }: BottomNavigationProps) {
-  const tabs = [
-    { id: "pets" as const, icon: Home, label: "Pets" },
-    { id: "community" as const, icon: Heart, label: "Community" },
-    { id: "caretaker" as const, icon: UserCheck, label: "Caretaker" },
-    { id: "profile" as const, icon: User, label: "Profile" },
-  ];
-
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border z-50">
-      <div className="flex items-center justify-around p-2 max-w-md mx-auto">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+    <div className="fixed bottom-4 left-6 right-6 z-50 md:hidden max-w-xs mx-auto">
+      <nav className="bg-background/90 backdrop-blur-xl border border-border/40 shadow-2xl rounded-full px-4 py-2 flex items-center justify-around gap-2 ring-1 ring-black/5">
+        {/* Adopt / Browse Tab */}
+        <button
+          onClick={() => onTabChange("pets")}
+          className={`flex flex-col items-center justify-center flex-1 py-1 px-3 rounded-2xl transition-all duration-200 cursor-pointer ${
+            activeTab === "pets"
+              ? "text-primary-coral font-bold bg-primary-coral/10 scale-105"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Search className="w-5 h-5" />
+          <span className="text-[10px] mt-0.5">Adopt</span>
+        </button>
 
-          return (
-            <Button
-              key={tab.id}
-              variant="ghost"
-              size="sm"
-              className={`flex flex-col items-center gap-1 h-auto py-2 px-3 rounded-xl transition-all duration-200 ${
-                isActive
-                  ? "bg-primary-coral/10 text-primary-coral"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              }`}
-              onClick={() => onTabChange(tab.id)}
-            >
-              <div className="relative">
-                <Icon
-                  className={`w-5 h-5 ${isActive ? "animate-pulse" : ""}`}
-                />
-              </div>
-              <span
-                className={`text-xs font-medium ${
-                  isActive ? "opacity-100" : "opacity-70"
-                }`}
-              >
-                {tab.label}
+        {/* Chats / Messages Tab */}
+        <button
+          onClick={() => onTabChange("messages")}
+          className={`relative flex flex-col items-center justify-center flex-1 py-1 px-3 rounded-2xl transition-all duration-200 cursor-pointer ${
+            activeTab === "messages"
+              ? "text-primary-coral font-bold bg-primary-coral/10 scale-105"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <div className="relative">
+            <MessageCircle className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-2 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+                {unreadCount > 9 ? "9+" : unreadCount}
               </span>
-            </Button>
-          );
-        })}
-      </div>
+            )}
+          </div>
+          <span className="text-[10px] mt-0.5">Chats</span>
+        </button>
+
+        {/* Profile Tab */}
+        <button
+          onClick={() => onTabChange("profile")}
+          className={`flex flex-col items-center justify-center flex-1 py-1 px-3 rounded-2xl transition-all duration-200 cursor-pointer ${
+            activeTab === "profile"
+              ? "text-primary-coral font-bold bg-primary-coral/10 scale-105"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <User className="w-5 h-5" />
+          <span className="text-[10px] mt-0.5">Profile</span>
+        </button>
+      </nav>
     </div>
   );
 }
+
+

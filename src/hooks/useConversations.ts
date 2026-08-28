@@ -1,62 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb, LocalConversation, LocalMessage } from "@/lib/localDb";
 import { useToast } from "./use-toast";
-import { z } from "zod";
 
-// Input validation schemas
-const createConversationSchema = z.object({
-  pet_id: z.string().uuid("Invalid pet ID"),
-  owner_id: z.string().uuid("Invalid owner ID"),
-  initial_message: z.string().max(5000, "Message is too long (max 5000 characters)").optional(),
-});
-
-const sendMessageSchema = z.object({
-  conversation_id: z.string().uuid("Invalid conversation ID"),
-  content: z.string().min(1, "Message cannot be empty").max(5000, "Message is too long (max 5000 characters)"),
-  message_type: z.string().optional(),
-  template_id: z.string().optional(),
-});
-
-export interface ConversationWithPet {
-  id: string;
-  pet_id: string;
-  adopter_id: string;
-  owner_id: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  pet: {
-    name: string;
-    image_urls: string[];
-    type: string;
-  };
-  other_user: {
-    id: string;
-    name: string;
-    avatar_url?: string;
-  };
-  last_message?: {
-    content: string;
-    created_at: string;
-    sender_id: string;
-  };
-  unread_count: number;
-}
-
-export interface Message {
-  id: string;
-  conversation_id: string;
-  sender_id: string;
-  content: string;
-  message_type: string;
-  template_id?: string;
-  created_at: string;
-  read_at?: string;
-  sender: {
-    name: string;
-    avatar_url?: string;
-  };
-}
+export type ConversationWithPet = LocalConversation;
+export type Message = LocalMessage;
 
 export interface CreateConversationData {
   pet_id: string;
@@ -82,110 +29,24 @@ export const useConversations = () => {
   } = useQuery({
     queryKey: ["conversations"],
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      const { data, error } = await supabase
-        .from("conversations")
-        .select(
-          `
-          *,
-          pet:pets(name, image_urls, type),
-          adopter:users!conversations_adopter_id_fkey(id, name, avatar_url),
-          owner:users!conversations_owner_id_fkey(id, name, avatar_url),
-          messages:messages(
-            content, created_at, sender_id,
-            order: created_at.desc,
-            limit: 1
-          )
-        `
-        )
-        .or(`adopter_id.eq.${user.id},owner_id.eq.${user.id}`)
-        .order("updated_at", { ascending: false });
-
-      if (error) throw error;
-
-      // Process conversations to add other_user and unread_count
-      const processedConversations = await Promise.all(
-        (data || []).map(async (conv: any) => {
-          const isAdopter = conv.adopter_id === user.id;
-          const other_user = isAdopter ? conv.owner : conv.adopter;
-
-          // Get unread message count
-          const { count: unreadCount } = await supabase
-            .from("messages")
-            .select("*", { count: "exact", head: true })
-            .eq("conversation_id", conv.id)
-            .neq("sender_id", user.id)
-            .is("read_at", null);
-
-          return {
-            ...conv,
-            other_user,
-            last_message: conv.messages[0] || null,
-            unread_count: unreadCount || 0,
-          };
-        })
-      );
-
-      return processedConversations as ConversationWithPet[];
+      return localDb.getConversations();
     },
-    staleTime: 30000,
-    retry: 1,
+    staleTime: 5000,
   });
 
   const createConversationMutation = useMutation({
     mutationFn: async (data: CreateConversationData) => {
-      // Validate input
-      const validated = createConversationSchema.parse(data);
-      
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      // Check if conversation already exists
-      const { data: existingConv } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("pet_id", validated.pet_id)
-        .eq("adopter_id", user.id)
-        .single();
-
-      if (existingConv) {
-        return existingConv;
-      }
-
-      // Create new conversation
-      const { data: newConv, error } = await supabase
-        .from("conversations")
-        .insert({
-          pet_id: validated.pet_id,
-          adopter_id: user.id,
-          owner_id: validated.owner_id,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Send initial message if provided
-      if (validated.initial_message) {
-        await supabase.from("messages").insert({
-          conversation_id: newConv.id,
-          sender_id: user.id,
-          content: validated.initial_message,
-        });
-      }
-
-      return newConv;
+      const conv = localDb.createConversation(
+        data.pet_id,
+        data.owner_id,
+        data.initial_message
+      );
+      return conv;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
       toast({
-        title: "Chat started!",
+        title: "Chat opened",
         description: "You can now message the pet owner.",
       });
     },
@@ -219,49 +80,20 @@ export const useMessages = (conversationId: string) => {
     queryKey: ["messages", conversationId],
     queryFn: async () => {
       if (!conversationId) return [];
-
-      const { data, error } = await supabase
-        .from("messages")
-        .select(
-          `
-          *,
-          sender:users(name, avatar_url)
-        `
-        )
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
-      return (data || []) as Message[];
+      return localDb.getMessages(conversationId);
     },
     enabled: !!conversationId,
-    staleTime: 10000,
+    staleTime: 2000,
   });
 
   const sendMessageMutation = useMutation({
     mutationFn: async (data: SendMessageData) => {
-      // Validate input
-      const validated = sendMessageSchema.parse(data);
-      
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { data: message, error } = await supabase
-        .from("messages")
-        .insert({
-          conversation_id: validated.conversation_id,
-          sender_id: user.id,
-          content: validated.content,
-          message_type: validated.message_type || "text",
-          template_id: validated.template_id,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return message;
+      return localDb.sendMessage(
+        data.conversation_id,
+        data.content,
+        data.message_type,
+        data.template_id
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
@@ -278,13 +110,7 @@ export const useMessages = (conversationId: string) => {
 
   const markAsReadMutation = useMutation({
     mutationFn: async (messageIds: string[]) => {
-      const { error } = await supabase
-        .from("messages")
-        .update({ read_at: new Date().toISOString() })
-        .in("id", messageIds)
-        .is("read_at", null);
-
-      if (error) throw error;
+      localDb.markMessagesAsRead(messageIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });

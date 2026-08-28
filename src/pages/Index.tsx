@@ -2,30 +2,38 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
-import { BottomNavigation } from "@/components/BottomNavigation";
-import { PawPrints } from "@/components/PawPrints";
+import { Navbar } from "@/components/Navbar";
+import { BottomNavigation, TabType } from "@/components/BottomNavigation";
 import { PetFeed } from "@/components/PetFeed";
 import { MessagesUpdated } from "@/components/MessagesUpdated";
 import { Profile } from "@/components/Profile";
 import { PetListingForm } from "@/components/PetListingForm";
-import { Caretaker } from "@/components/Caretaker";
+import { SettingsModal } from "@/components/SettingsModal";
+import { useConversations } from "@/hooks/useConversations";
 
 const LoadingMessages = [
-  "Finding perfect pet matches...",
-  "Connecting loving hearts...",
-  "Preparing adoption profiles...",
-  "Setting up your pet journey...",
+  "Finding loving pets near you...",
+  "Loading verified pet listings...",
+  "Connecting adopters with pet owners...",
+  "Welcome to PawPal...",
 ];
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<
-    "community" | "pets" | "caretaker" | "profile"
-  >("pets");
+  const [activeTab, setActiveTab] = useState<TabType>("pets");
   const [showListingForm, setShowListingForm] = useState(false);
-  const [showMessages, setShowMessages] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [currentMessage, setCurrentMessage] = useState(0);
+
+  const { conversations } = useConversations();
+
+  // Total unread messages across conversations
+  const totalUnreadCount = conversations.reduce(
+    (acc, conv) => acc + (conv.unread_count || 0),
+    0
+  );
 
   useEffect(() => {
     // Set up auth state listener
@@ -50,57 +58,57 @@ const Index = () => {
     if (isLoading) {
       const interval = setInterval(() => {
         setCurrentMessage((prev) => (prev + 1) % LoadingMessages.length);
-      }, 2000); // Change message every 2 seconds
+      }, 2000);
 
       return () => clearInterval(interval);
     }
   }, [isLoading]);
 
   const handleAuthSuccess = () => {
-    // The auth state change listener will handle the session update automatically
-    // No need to set loading again
+    // Auth state change will handle session update
   };
 
-  // Show loading state
+  const handleNavigateToMessages = (conversationId?: string) => {
+    if (conversationId) {
+      setSelectedConversationId(conversationId);
+    }
+    setShowListingForm(false);
+    setActiveTab("messages");
+  };
+
+  const handleTabChange = (tab: TabType) => {
+    if (tab === "post") {
+      setShowListingForm(true);
+    } else {
+      setShowListingForm(false);
+      setActiveTab(tab);
+    }
+  };
+
+  // Show loading splash
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-warm-beige to-soft-cream overflow-hidden">
-        <div className="text-center relative">
-          {/* Main Logo */}
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-warm-beige via-soft-cream to-background overflow-hidden">
+        <div className="text-center relative px-6">
           <img
             src="/pet_logo_1.png"
             alt="PawPal Logo"
-            className="h-20 w-auto mx-auto mb-8 object-contain"
+            className="h-20 w-auto mx-auto mb-6 object-contain"
           />
 
           {/* Loading Animation */}
-          <div className="relative w-60 h-32 mx-auto mb-6 flex items-center justify-center">
-            {/* Paw Print Trail Animation */}
-            <div className="flex space-x-3">
-              <div className="w-4 h-4 bg-primary-coral rounded-full animate-bounce"></div>
-              <div className="w-4 h-4 bg-primary-coral rounded-full animate-bounce delay-100"></div>
-              <div className="w-4 h-4 bg-primary-coral rounded-full animate-bounce delay-200"></div>
-              <div className="w-4 h-4 bg-pet-orange rounded-full animate-bounce delay-300"></div>
-            </div>
+          <div className="flex items-center justify-center space-x-2.5 mb-6">
+            <div className="w-3.5 h-3.5 bg-primary-coral rounded-full animate-bounce"></div>
+            <div className="w-3.5 h-3.5 bg-primary-coral rounded-full animate-bounce delay-100"></div>
+            <div className="w-3.5 h-3.5 bg-pet-orange rounded-full animate-bounce delay-200"></div>
           </div>
 
-          {/* Dynamic Loading Message */}
-          <p className="text-warm-brown font-medium text-lg transition-all duration-500 mb-2">
+          <p className="text-foreground font-bold text-base transition-all duration-500 mb-1">
             {LoadingMessages[currentMessage]}
           </p>
-          <p className="text-warm-brown/70 text-sm">
-            PawPal is getting ready for you 🐾
+          <p className="text-muted-foreground text-xs">
+            Adopt & Rehome Pets 🐾
           </p>
-
-          {/* Progress indicator */}
-          <div className="mt-6 w-48 mx-auto">
-            <div className="w-full bg-warm-brown/20 rounded-full h-1.5">
-              <div
-                className="bg-gradient-to-r from-primary-coral to-pet-orange h-1.5 rounded-full animate-pulse"
-                style={{ width: "75%" }}
-              ></div>
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -111,43 +119,82 @@ const Index = () => {
     return <WelcomeScreen onAuthSuccess={handleAuthSuccess} />;
   }
 
-  // Show listing form if needed
+  // Show listing form if user triggered create pet
   if (showListingForm) {
-    return <PetListingForm onBack={() => setShowListingForm(false)} />;
-  }
-
-  // Show messages if needed
-  if (showMessages) {
-    return <MessagesUpdated onBack={() => setShowMessages(false)} />;
+    return (
+      <PetListingForm
+        onBack={() => {
+          setShowListingForm(false);
+          setActiveTab("pets");
+        }}
+      />
+    );
   }
 
   // Render main app tabs
   const renderActiveTab = () => {
     switch (activeTab) {
-      case "community":
-        return <PawPrints onNavigateToMessages={() => setShowMessages(true)} />;
       case "pets":
         return (
           <PetFeed
             onCreateListing={() => setShowListingForm(true)}
-            onNavigateToMessages={() => setShowMessages(true)}
+            onNavigateToMessages={handleNavigateToMessages}
           />
         );
-      case "caretaker":
-        return <Caretaker onNavigateToMessages={() => setShowMessages(true)} />;
+      case "messages":
+        return (
+          <MessagesUpdated
+            initialConversationId={selectedConversationId}
+            onBack={() => {
+              setSelectedConversationId(null);
+              setActiveTab("pets");
+            }}
+          />
+        );
       case "profile":
-        return <Profile onNavigateToMessages={() => setShowMessages(true)} />;
+        return (
+          <Profile
+            onNavigateToMessages={handleNavigateToMessages}
+            onCreateListing={() => setShowListingForm(true)}
+          />
+        );
       default:
-        return <PawPrints onNavigateToMessages={() => setShowMessages(true)} />;
+        return (
+          <PetFeed
+            onCreateListing={() => setShowListingForm(true)}
+            onNavigateToMessages={handleNavigateToMessages}
+          />
+        );
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {renderActiveTab()}
-      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+    <div className="min-h-screen bg-background flex flex-col">
+      <Navbar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onCreateListing={() => setShowListingForm(true)}
+        unreadCount={totalUnreadCount}
+        onOpenSettings={() => setShowSettingsModal(true)}
+      />
+
+      <div className="flex-1">
+        {renderActiveTab()}
+      </div>
+
+      <BottomNavigation
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        unreadCount={totalUnreadCount}
+      />
+
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
     </div>
   );
 };
 
 export default Index;
+

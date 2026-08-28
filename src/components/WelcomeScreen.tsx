@@ -51,11 +51,10 @@ export const WelcomeScreen = ({ onAuthSuccess }: WelcomeScreenProps) => {
             Rehome. Adopt. Connect.
           </p>
 
-          {/* Community Message */}
-          <div className="bg-card/40 backdrop-blur-sm rounded-2xl px-4 py-3 mx-4 border border-border/20">
-            <p className="text-sm text-muted-foreground text-center leading-relaxed">
-              Join a loving community - share pet stories, moments, and make
-              connections that go beyond adoption.
+          {/* Marketplace Subtitle Message */}
+          <div className="bg-card/60 backdrop-blur-md rounded-2xl px-4 py-2.5 mx-4 border border-border/30 shadow-xs">
+            <p className="text-xs text-foreground/80 font-medium text-center leading-relaxed">
+              Find your ideal pet companion or easily rehome your pet directly with caring adopters.
             </p>
           </div>
         </div>

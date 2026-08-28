@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { Search, Filter, MapPin, Plus, MessageSquare } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Search, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { PetCard } from "./PetCard";
 import { PetDetails } from "./PetDetails";
-import { usePets, useSavedPets, useMyPets, Pet } from "@/hooks/usePets";
+import { usePets, useSavedPets, Pet } from "@/hooks/usePets";
 import { useConversations } from "@/hooks/useConversations";
-import { useUserRole } from "@/hooks/useUserRole";
 
 interface PetFeedProps {
   onCreateListing?: () => void;
@@ -20,18 +20,9 @@ export function PetFeed({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
 
-  // Get user role to determine what to show
-  const { userRole, isLoading: isLoadingRole } = useUserRole();
-
-  // Get pets based on user role
-  const { pets: allPets, isLoading: isLoadingAllPets } = usePets();
-  const { data: myPets = [], isLoading: isLoadingMyPets } = useMyPets();
+  const { pets, isLoading } = usePets();
   const { savedPets, toggleSavedPet } = useSavedPets();
   const { createConversation } = useConversations();
-
-  // Determine which pets to show based on user role
-  const pets = userRole === "owner" ? myPets : allPets;
-  const isLoading = userRole === "owner" ? isLoadingMyPets : isLoadingAllPets;
 
   const handleWishlist = (petId: string) => {
     toggleSavedPet(petId);
@@ -45,238 +36,182 @@ export function PetFeed({
   };
 
   const handleStartChat = (petId: string, ownerId: string) => {
-    createConversation({
-      pet_id: petId,
-      owner_id: ownerId,
-      initial_message: "Hi! I'm interested in your pet.",
+    createConversation(
+      {
+        pet_id: petId,
+        owner_id: ownerId,
+        initial_message: "Hi! I am interested in adopting your pet. Is it still available?",
+      },
+      {
+        onSuccess: (newConv: any) => {
+          if (onNavigateToMessages) {
+            onNavigateToMessages(newConv?.id);
+          }
+        },
+      }
+    );
+  };
+
+  // Filter pets dynamically based on search query (name, breed, location, type, gender, description)
+  const filteredPets = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return pets;
+    }
+    const query = searchQuery.toLowerCase().trim();
+    return pets.filter((pet) => {
+      const matchesName = pet.name?.toLowerCase().includes(query);
+      const matchesBreed = pet.breed?.toLowerCase().includes(query);
+      const matchesLocation = pet.location?.toLowerCase().includes(query);
+      const matchesType = pet.type?.toLowerCase().includes(query);
+      const matchesGender = pet.gender?.toLowerCase() === query;
+      const matchesDescription = pet.description?.toLowerCase().includes(query);
+
+      return (
+        matchesName ||
+        matchesBreed ||
+        matchesLocation ||
+        matchesType ||
+        matchesGender ||
+        matchesDescription
+      );
     });
+  }, [pets, searchQuery]);
 
-    // Navigate to Messages tab
-    if (onNavigateToMessages) {
-      onNavigateToMessages();
-    }
-  };
-
-  const formatAge = (ageInMonths: number) => {
-    if (ageInMonths < 12) {
-      return `${ageInMonths} month${ageInMonths === 1 ? "" : "s"}`;
-    }
-    const years = Math.floor(ageInMonths / 12);
-    const months = ageInMonths % 12;
-
-    if (months === 0) {
-      return `${years} year${years === 1 ? "" : "s"}`;
-    }
-    return `${years} year${years === 1 ? "" : "s"} ${months} month${
-      months === 1 ? "" : "s"
-    }`;
-  };
-
-  const formatPostedDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30)
-      return `${Math.floor(diffDays / 7)} week${
-        Math.floor(diffDays / 7) === 1 ? "" : "s"
-      } ago`;
-    return `${Math.floor(diffDays / 30)} month${
-      Math.floor(diffDays / 30) === 1 ? "" : "s"
-    } ago`;
-  };
-
-  const filteredPets = pets.filter(
-    (pet) =>
-      pet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pet.breed.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pet.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pet.type.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  if (userRole === "rehome") {
-    return (
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-md mx-auto space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold text-foreground">
-              Post Your Pet
+  return (
+    <div className="min-h-screen bg-background pb-28">
+      {/* Search Header Banner */}
+      <section className="bg-gradient-to-b from-muted/30 via-background to-background border-b border-border/30 pt-8 pb-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center space-y-4">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl sm:text-4xl font-black text-foreground tracking-tight">
+              Find Your Forever Friend 🐾
             </h1>
-            <p className="text-muted-foreground">
-              Help your furry friend find a loving new home
+            <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
+              Search loving pets ready for adoption by name, breed, species, or city.
             </p>
           </div>
 
-          <Button
-            variant="hero"
-            size="lg"
-            className="w-full"
-            onClick={onCreateListing}
-          >
-            + Create New Listing
-          </Button>
-
-          <div className="text-center text-muted-foreground">
-            <p>Your listings will appear here once created</p>
-          </div>
-        </div>
-
-        {/* Pet Details Modal */}
-        {selectedPet && (
-          <PetDetails
-            pet={selectedPet}
-            isOpen={!!selectedPet}
-            onClose={() => setSelectedPet(null)}
-            onStartChat={handleStartChat}
-          />
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border z-10">
-        <div className="max-w-md mx-auto p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <img
-                src="/pet_logo_1.png"
-                alt="PawPal Logo"
-                className="h-8 w-auto mr-3 object-contain"
-              />
-              <div>
-                <h1 className="text-xl font-bold text-foreground">
-                  {userRole === "owner" ? "My Pets" : "Find Your Pet Pal"}
-                </h1>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  <span>
-                    {userRole === "owner"
-                      ? "Manage your listings"
-                      : "Near Mumbai"}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <MessageSquare
-                className="w-6 h-6 text-primary-coral cursor-pointer hover:text-primary-coral/80 transition-colors"
-                onClick={() => onNavigateToMessages?.()}
-              />
+          {/* Unified Search Input Bar */}
+          <div className="relative max-w-xl mx-auto pt-2">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Input
+              placeholder="Search by dog, cat, Golden Retriever, Mumbai, female..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-12 pr-10 h-13 rounded-2xl bg-card border-border/50 text-sm sm:text-base shadow-sm focus-visible:ring-primary-coral/40"
+            />
+            {searchQuery && (
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => {
-                  // TODO: Implement filter functionality
-                  console.log("Filter clicked");
-                }}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-foreground rounded-full"
+                onClick={() => setSearchQuery("")}
               >
-                <Filter className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search pets by name, breed, or location..."
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Pet Grid */}
-      <div className="max-w-md mx-auto p-4">
-        {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-card rounded-lg p-4 animate-pulse">
-                <div className="h-48 bg-muted rounded-md mb-4"></div>
-                <div className="h-4 bg-muted rounded mb-2"></div>
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {filteredPets.map((pet, index) => (
-              <div
-                key={pet.id}
-                className="animate-slide-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <PetCard
-                  pet={{
-                    id: pet.id,
-                    name: pet.name,
-                    breed: pet.breed,
-                    petType: pet.type,
-                    age: formatAge(pet.age),
-                    gender: pet.gender as "male" | "female",
-                    location: pet.location,
-                    images: pet.image_urls || [],
-                    description: pet.description,
-                    isVaccinated: true, // Default to true, can be enhanced later
-                    postedDate: formatPostedDate(pet.created_at),
-                  }}
-                  onWishlist={handleWishlist}
-                  onViewDetails={handleViewDetails}
-                  isWishlisted={savedPets.includes(pet.id)}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {filteredPets.length === 0 && !isLoading && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">{searchQuery ? "🔍" : "🐾"}</div>
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              {searchQuery
-                ? "No pets found"
-                : userRole === "owner"
-                ? "No pets listed yet"
-                : "No pets available yet"}
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              {searchQuery
-                ? "Try searching for dogs, cats, birds, rabbits, or other pets"
-                : userRole === "owner"
-                ? "Create your first pet listing to find them a new home"
-                : "Check back soon for new pet listings!"}
-            </p>
-            {!searchQuery && onCreateListing && (
-              <Button
-                onClick={onCreateListing}
-                className="bg-gradient-to-r from-primary-coral to-pet-orange text-white"
-              >
-                {userRole === "owner" ? "List Your Pet" : "List a Pet"}
+                <X className="w-4 h-4" />
               </Button>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      </section>
 
-      {/* Floating Action Button for Creating Listings */}
-      {onCreateListing && (
-        <Button
-          onClick={onCreateListing}
-          size="lg"
-          className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-primary-coral to-pet-orange text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 z-30"
-          aria-label="Create pet listing"
-        >
-          <Plus className="w-6 h-6" />
-        </Button>
+      {/* Main Feed Content Area */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Results Counter Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="font-bold text-base sm:text-lg text-foreground">
+              {searchQuery.trim() ? `Search Results for "${searchQuery}"` : "Available Pets"}
+            </h2>
+            <Badge variant="secondary" className="text-xs font-bold px-2.5 py-0.5 rounded-lg">
+              {filteredPets.length} {filteredPets.length === 1 ? "pet" : "pets"}
+            </Badge>
+          </div>
+
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground hover:text-foreground font-semibold"
+              onClick={() => setSearchQuery("")}
+            >
+              Clear search
+            </Button>
+          )}
+        </div>
+
+        {/* Listings Grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div
+                key={i}
+                className="h-80 rounded-2xl bg-muted/40 animate-pulse border border-border/30"
+              />
+            ))}
+          </div>
+        ) : filteredPets.length === 0 ? (
+          <div className="text-center py-20 px-4 rounded-3xl border border-dashed border-border/60 bg-muted/10 space-y-4 max-w-lg mx-auto">
+            <div className="text-6xl animate-bounce">🔍🐾</div>
+            <div className="space-y-1.5">
+              <h3 className="font-bold text-lg text-foreground">
+                No pets found
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                {searchQuery
+                  ? `We couldn't find any pets matching "${searchQuery}". Try searching a different breed, species, or location.`
+                  : "No pet listings available yet. Be the first to list a pet for adoption!"}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 pt-2">
+              {searchQuery && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl text-xs font-semibold"
+                  onClick={() => setSearchQuery("")}
+                >
+                  Clear Search
+                </Button>
+              )}
+              {onCreateListing && (
+                <Button
+                  size="sm"
+                  className="rounded-xl bg-gradient-to-r from-primary-coral to-pet-orange text-white text-xs font-bold shadow-sm"
+                  onClick={onCreateListing}
+                >
+                  List a Pet
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredPets.map((pet) => (
+              <PetCard
+                key={pet.id}
+                pet={pet}
+                onWishlist={handleWishlist}
+                onViewDetails={handleViewDetails}
+                onStartChat={handleStartChat}
+                isWishlisted={savedPets.includes(pet.id)}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Pet Details Modal */}
+      {selectedPet && (
+        <PetDetails
+          pet={selectedPet}
+          isOpen={!!selectedPet}
+          onClose={() => setSelectedPet(null)}
+          onStartChat={handleStartChat}
+        />
       )}
     </div>
   );
 }
+
+

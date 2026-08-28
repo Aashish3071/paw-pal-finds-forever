@@ -1,31 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb, LocalPet } from "@/lib/localDb";
 import { useToast } from "./use-toast";
 
-export interface Pet {
-  id: string;
-  name: string;
-  type: string;
-  breed: string;
-  gender: string;
-  age: number;
-  description: string;
-  image_urls: string[];
-  location: string;
-  is_adopted: boolean;
-  created_at: string;
-  owner_id: string;
-  owner?: {
-    name: string;
-    avatar_url?: string;
-  };
-}
+export type Pet = LocalPet;
 
 export interface CreatePetData {
   name: string;
   type: string;
   breed: string;
-  gender: string;
+  gender: "male" | "female" | string;
   age: string;
   description: string;
   location: string;
@@ -43,59 +26,43 @@ export const usePets = () => {
   } = useQuery({
     queryKey: ["pets"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pets")
-        .select(
-          `
-          *,
-          owner:users(name, avatar_url)
-        `
-        )
-        .eq("is_adopted", false)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return (data || []) as Pet[];
+      return localDb.getPets();
     },
-    staleTime: 30000, // Cache for 30 seconds
-    retry: 1, // Only retry once on failure
+    staleTime: 5000,
   });
 
   const createPetMutation = useMutation({
     mutationFn: async (petData: CreatePetData) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
       // Convert age string to number (extract years/months)
       let ageInMonths = 0;
       if (petData.age.includes("year")) {
-        const years = parseInt(petData.age);
+        const years = parseInt(petData.age) || 1;
         ageInMonths = years * 12;
       } else if (petData.age.includes("month")) {
-        ageInMonths = parseInt(petData.age);
+        ageInMonths = parseInt(petData.age) || 6;
+      } else {
+        ageInMonths = parseInt(petData.age) || 12;
       }
 
-      const { data, error } = await supabase
-        .from("pets")
-        .insert({
-          ...petData,
-          age: ageInMonths,
-          owner_id: user.id,
-          image_urls: petData.image_urls || [],
-        })
-        .select()
-        .single();
+      const newPet = localDb.createPet({
+        name: petData.name,
+        type: petData.type.toLowerCase(),
+        breed: petData.breed,
+        gender: petData.gender.toLowerCase() === "female" ? "female" : "male",
+        age: ageInMonths,
+        description: petData.description,
+        location: petData.location,
+        image_urls: petData.image_urls || [],
+      });
 
-      if (error) throw error;
-      return data;
+      return newPet;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pets"] });
+      queryClient.invalidateQueries({ queryKey: ["my-pets"] });
       toast({
-        title: "Success!",
-        description: "Your pet listing has been created.",
+        title: "Ad Posted!",
+        description: "Your pet listing is now live in the marketplace.",
       });
     },
     onError: (error: any) => {
@@ -109,24 +76,41 @@ export const usePets = () => {
 
   const markAsAdoptedMutation = useMutation({
     mutationFn: async (petId: string) => {
-      const { error } = await supabase
-        .from("pets")
-        .update({ is_adopted: true })
-        .eq("id", petId);
-
-      if (error) throw error;
+      localDb.markPetAsAdopted(petId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pets"] });
+      queryClient.invalidateQueries({ queryKey: ["my-pets"] });
       toast({
-        title: "Success!",
-        description: "Pet has been marked as adopted.",
+        title: "Pet Adopted! 🎉",
+        description: "Listing marked as adopted.",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update pet status.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePetMutation = useMutation({
+    mutationFn: async (petId: string) => {
+      localDb.deletePet(petId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pets"] });
+      queryClient.invalidateQueries({ queryKey: ["my-pets"] });
+      toast({
+        title: "Listing deleted",
+        description: "Your pet advertisement has been removed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete pet listing.",
         variant: "destructive",
       });
     },
@@ -140,6 +124,8 @@ export const usePets = () => {
     isCreating: createPetMutation.isPending,
     markPetAsAdopted: markAsAdoptedMutation.mutate,
     isUpdatingStatus: markAsAdoptedMutation.isPending,
+    deletePet: deletePetMutation.mutate,
+    isDeleting: deletePetMutation.isPending,
   };
 };
 
@@ -148,87 +134,28 @@ export const useMyPets = () => {
   return useQuery({
     queryKey: ["my-pets"],
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      const { data, error } = await supabase
-        .from("pets")
-        .select("*")
-        .eq("owner_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return (data || []) as Pet[];
+      return localDb.getMyPets();
     },
-    staleTime: 30000,
-    retry: 1,
+    staleTime: 5000,
   });
 };
 
 export const useSavedPets = () => {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: savedPets = [], isLoading } = useQuery({
     queryKey: ["saved-pets"],
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      const { data, error } = await supabase
-        .from("saved_items")
-        .select("item_id")
-        .eq("user_id", user.id)
-        .eq("item_type", "pet");
-
-      if (error) throw error;
-      return data.map((item) => item.item_id);
+      return localDb.getSavedPets();
     },
   });
 
   const toggleSavedPet = useMutation({
     mutationFn: async (petId: string) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const isSaved = savedPets.includes(petId);
-
-      if (isSaved) {
-        const { error } = await supabase
-          .from("saved_items")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("item_id", petId)
-          .eq("item_type", "pet");
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("saved_items").insert({
-          user_id: user.id,
-          item_id: petId,
-          item_type: "pet",
-        });
-
-        if (error) throw error;
-      }
-
-      return !isSaved;
+      return localDb.toggleSavedPet(petId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["saved-pets"] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update saved pets.",
-        variant: "destructive",
-      });
     },
   });
 
@@ -239,3 +166,4 @@ export const useSavedPets = () => {
     isUpdating: toggleSavedPet.isPending,
   };
 };
+

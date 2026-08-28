@@ -190,7 +190,7 @@ export const AuthModal = ({
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-primary-coral to-pet-orange text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-12 text-base font-bold bg-gradient-to-r from-primary-coral to-pet-orange text-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-[1.02] disabled:opacity-50"
           >
             {isLoading ? (
               <div className="flex items-center space-x-2">
@@ -201,9 +201,27 @@ export const AuthModal = ({
               <span>{mode === "signup" ? "Create Account" : "Sign In"}</span>
             )}
           </Button>
+
+          {/* 1-Click Demo Login */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              localDb.signIn("alex@pawpal.com");
+              toast({
+                title: "Logged in as Demo User",
+                description: "Welcome back, Alex!",
+              });
+              onAuthSuccess();
+              onClose();
+            }}
+            className="w-full h-10 text-xs font-semibold rounded-xl border-dashed border-primary-coral/40 text-primary-coral hover:bg-primary-coral/10"
+          >
+            🐾 Quick Demo Sign In (Alex Sharma)
+          </Button>
         </form>
 
-        <div className="text-center pt-4 border-t border-warm-brown/10">
+        <div className="text-center pt-3 border-t border-warm-brown/10">
           <p className="text-warm-brown/70 text-sm">
             {mode === "signup"
               ? "Already have an account?"

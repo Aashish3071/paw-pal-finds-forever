@@ -1,22 +1,16 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Send, MoreVertical, Heart } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   useMessages,
   MESSAGE_TEMPLATES,
   ConversationWithPet,
 } from "@/hooks/useConversations";
 import { usePets } from "@/hooks/usePets";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChatInterfaceProps {
   conversation: ConversationWithPet;
@@ -26,14 +20,25 @@ interface ChatInterfaceProps {
 export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
   const [messageText, setMessageText] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
   const { messages, isLoading, sendMessage, isSending, markAsRead } =
     useMessages(conversation.id);
   const { markPetAsAdopted } = usePets();
 
-  const currentUserId = ""; // We'll get this from auth context
+  // Resolve current authenticated user
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    });
+  }, []);
+
   const isOwner = conversation.owner_id === currentUserId;
   const templateType = isOwner ? "owner" : "adopter";
+  const quickTemplates = MESSAGE_TEMPLATES[templateType] || [];
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -42,6 +47,7 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
 
   useEffect(() => {
     // Mark unread messages as read
+    if (!currentUserId) return;
     const unreadMessages = messages
       .filter((msg) => msg.sender_id !== currentUserId && !msg.read_at)
       .map((msg) => msg.id);
@@ -52,7 +58,7 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
   }, [messages, currentUserId, markAsRead]);
 
   const handleSendMessage = () => {
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || isSending) return;
 
     sendMessage({
       conversation_id: conversation.id,
@@ -64,8 +70,8 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
 
   const handleTemplateSelect = (templateObj: any) => {
     const personalizedTemplate = templateObj.template
-      .replace("{petName}", conversation.pet.name)
-      .replace("{petType}", conversation.pet.type);
+      .replace("{petName}", conversation.pet?.name || "the pet")
+      .replace("{petType}", conversation.pet?.type || "pet");
 
     sendMessage({
       conversation_id: conversation.id,
@@ -73,11 +79,6 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
       message_type: "template",
     });
     setShowTemplates(false);
-  };
-
-  const handleMarkAsAdopted = () => {
-    markPetAsAdopted(conversation.pet_id);
-    // You might want to also update the conversation status
   };
 
   const formatMessageTime = (dateString: string) => {
@@ -96,7 +97,7 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
     } else if (date.toDateString() === yesterday.toDateString()) {
       return "Yesterday";
     } else {
-      return date.toLocaleDateString();
+      return date.toLocaleDateString([], { month: "short", day: "numeric" });
     }
   };
 
@@ -112,57 +113,80 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border/20 z-10">
-        <div className="max-w-md mx-auto p-4">
+      {/* Sticky Header */}
+      <div className="sticky top-0 bg-background/95 backdrop-blur-md border-b border-border/30 z-20 shadow-xs">
+        <div className="max-w-md mx-auto p-3.5 space-y-2">
+          {/* Top Row */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={onBack}>
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                className="h-8 w-8 rounded-full"
+              >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
 
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-muted">
-                  {conversation.pet.image_urls?.[0] ? (
-                    <img
-                      src={conversation.pet.image_urls[0]}
-                      alt={conversation.pet.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      🐾
-                    </div>
-                  )}
-                </div>
-
+              <div className="flex items-center gap-2.5">
+                <Avatar className="h-9 w-9 ring-1 ring-primary-coral/30">
+                  <AvatarImage src={conversation.other_user?.avatar_url} />
+                  <AvatarFallback className="bg-primary-coral/10 text-primary-coral font-bold text-xs">
+                    {conversation.other_user?.name?.charAt(0).toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
                 <div>
-                  <h2 className="font-semibold text-foreground">
-                    {conversation.pet.name}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    with {conversation.other_user.name}
+                  <h3 className="font-bold text-sm text-foreground leading-tight">
+                    {conversation.other_user?.name || "Pet Owner / Adopter"}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    {isOwner ? "Interested Adopter" : "Pet Owner"}
                   </p>
                 </div>
               </div>
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="w-5 h-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {isOwner && (
-                  <DropdownMenuItem onClick={handleMarkAsAdopted}>
-                    Mark as Adopted
-                  </DropdownMenuItem>
+            {/* Pet Status / Action */}
+            {isOwner && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] rounded-lg border-primary-coral/30 text-primary-coral"
+                onClick={() => markPetAsAdopted(conversation.pet_id)}
+              >
+                Mark Adopted
+              </Button>
+            )}
+          </div>
+
+          {/* Dedicated Pet Context Banner (OLX Item Header) */}
+          <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40 border border-border/30">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted/60 flex-shrink-0">
+                {petImage ? (
+                  <img
+                    src={petImage}
+                    alt={conversation.pet?.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-sm">
+                    🐾
+                  </div>
                 )}
-                <DropdownMenuItem>Block User</DropdownMenuItem>
-                <DropdownMenuItem>Report</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </div>
+              <div className="leading-tight">
+                <span className="text-xs font-bold text-foreground block">
+                  {conversation.pet?.name || "Pet Inquiry"}
+                </span>
+                <span className="text-[10px] text-muted-foreground capitalize">
+                  {conversation.pet?.type || "Adoption"} • {conversation.pet?.name ? "Available" : ""}
+                </span>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-[10px] font-semibold h-5 bg-emerald-500/10 text-emerald-600 border-0">
+              Active Listing
+            </Badge>
           </div>
         </div>
       </div>
